@@ -1,5 +1,11 @@
 # mdit
 
+## AI SLOP ##
+
+### Disclaimer: This project is 100% AI generated!
+
+-----------------
+
 mdit is a desktop Markdown viewer/editor built with **Golang + Wails**.
 
 It provides a split-pane workspace:
