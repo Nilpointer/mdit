@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 400;
+  src: local(''), url('assets/fonts/nunito-v16-latin-regular.woff2') format('woff2');
+}
+
+@layer base {
+  html,
+  body,
+  #app {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Nunito', ui-sans-serif, sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .markdown-preview {
+    @apply text-slate-100;
+  }
+
+  .markdown-preview h1 {
+    @apply mb-4 mt-1 border-b border-slate-700 pb-2 text-3xl font-bold text-white;
+  }
+
+  .markdown-preview h2 {
+    @apply mb-3 mt-6 text-2xl font-semibold text-slate-100;
+  }
+
+  .markdown-preview h3 {
+    @apply mb-2 mt-5 text-xl font-semibold text-slate-100;
+  }
+
+  .markdown-preview p {
+    @apply my-3 leading-7 text-slate-200;
+  }
+
+  .markdown-preview ul,
+  .markdown-preview ol {
+    @apply my-3 pl-6 text-slate-200;
+  }
+
+  .markdown-preview ul {
+    @apply list-disc;
+  }
+
+  .markdown-preview ol {
+    @apply list-decimal;
+  }
+
+  .markdown-preview code {
+    @apply rounded bg-slate-800 px-1 py-0.5 font-mono text-sm text-cyan-200;
+  }
+
+  .markdown-preview pre {
+    @apply my-4 overflow-x-auto rounded-lg border border-slate-700 bg-slate-900 p-4;
+  }
+
+  .markdown-preview pre code {
+    @apply bg-transparent p-0 text-slate-100;
+  }
+
+  .markdown-preview blockquote {
+    @apply my-4 border-l-4 border-cyan-400/70 pl-4 text-slate-300;
+  }
+
+  .markdown-preview a {
+    @apply text-cyan-300 underline decoration-cyan-500 underline-offset-2 transition hover:text-cyan-200;
+  }
+
+  .markdown-preview table {
+    @apply my-4 w-full border-collapse overflow-hidden rounded-lg;
+  }
+
+  .markdown-preview th,
+  .markdown-preview td {
+    @apply border border-slate-700 px-3 py-2 text-left;
+  }
+
+  .markdown-preview hr {
+    @apply my-5 border-slate-700;
+  }
+}
