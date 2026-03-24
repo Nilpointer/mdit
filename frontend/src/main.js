@@ -3,6 +3,7 @@ import './style.css';
 import Alpine from 'alpinejs';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
+import cheatSheetMarkdown from './assets/markdown/cheatsheet.md?raw';
 
 import { BrowserOpenURL } from '../wailsjs/runtime/runtime';
 
@@ -44,11 +45,22 @@ const filenameFromPath = (path) => {
   return segments[segments.length - 1] || 'untitled.md';
 };
 
+const cheatSheetCloseHref = '#close-cheatsheet';
+
 window.markdownViewer = () => ({
   markdown: initialMarkdown,
   renderedHtml: '',
   statusMessage: 'Ready',
   currentFilePath: '',
+  showSourcePane: true,
+  showPreviewPane: true,
+  isCheatSheetOpen: false,
+  savedDocumentState: null,
+  history: [initialMarkdown],
+  historyIndex: 0,
+  historyLimit: 200,
+  syncOrigin: null,
+  syncReleaseTimer: null,
   openMenu: null,
   menuAlignment: {},
   renderTimer: null,
@@ -59,7 +71,6 @@ window.markdownViewer = () => ({
       items: [
         { label: 'Open', action: 'OpenFile' },
         { label: 'Save', action: 'SaveFile' },
-        { label: 'Export HTML', action: 'ExportHTML' },
       ],
     },
     {
@@ -75,8 +86,8 @@ window.markdownViewer = () => ({
       id: 'view',
       label: 'View',
       items: [
-        { label: 'Focus Editor', action: 'FocusEditor' },
-        { label: 'Focus Preview', action: 'FocusPreview' },
+        { label: 'Toggle Source Pane', action: 'ToggleSourcePane' },
+        { label: 'Toggle Preview Pane', action: 'TogglePreviewPane' },
       ],
     },
     {
@@ -95,16 +106,155 @@ window.markdownViewer = () => ({
     window.clearTimeout(this.renderTimer);
     this.renderTimer = window.setTimeout(() => this.renderNow(), 80);
   },
+  recordHistory(nextValue) {
+    if (nextValue === this.history[this.historyIndex]) {
+      return;
+    }
+
+    this.history = this.history.slice(0, this.historyIndex + 1);
+    this.history.push(nextValue);
+    if (this.history.length > this.historyLimit) {
+      const overflow = this.history.length - this.historyLimit;
+      this.history.splice(0, overflow);
+    }
+    this.historyIndex = this.history.length - 1;
+  },
+  resetHistory(initialValue) {
+    this.history = [initialValue];
+    this.historyIndex = 0;
+  },
+  applyMarkdown(nextValue, options = {}) {
+    const { resetHistory = false, recordHistory = true } = options;
+    this.markdown = nextValue;
+    if (resetHistory) {
+      this.resetHistory(nextValue);
+    } else if (recordHistory) {
+      this.recordHistory(nextValue);
+    }
+    this.renderNow();
+  },
+  undo() {
+    if (this.historyIndex === 0) {
+      this.statusMessage = 'Nothing to undo';
+      return;
+    }
+
+    this.historyIndex -= 1;
+    this.markdown = this.history[this.historyIndex] ?? '';
+    this.renderNow();
+    this.statusMessage = 'Undo';
+  },
+  redo() {
+    if (this.historyIndex >= this.history.length - 1) {
+      this.statusMessage = 'Nothing to redo';
+      return;
+    }
+
+    this.historyIndex += 1;
+    this.markdown = this.history[this.historyIndex] ?? '';
+    this.renderNow();
+    this.statusMessage = 'Redo';
+  },
+  handleEditorInput(value) {
+    this.recordHistory(value);
+    this.scheduleRender();
+  },
+  syncPaneScroll(fromElement, toElement, origin) {
+    if (!fromElement || !toElement) {
+      return;
+    }
+    if (this.syncOrigin && this.syncOrigin !== origin) {
+      return;
+    }
+
+    const fromMax = fromElement.scrollHeight - fromElement.clientHeight;
+    const toMax = toElement.scrollHeight - toElement.clientHeight;
+
+    if (toMax <= 0) {
+      return;
+    }
+
+    const ratio = fromMax > 0 ? fromElement.scrollTop / fromMax : 0;
+    const targetTop = Math.round(ratio * toMax);
+
+    if (Math.abs(toElement.scrollTop - targetTop) < 1) {
+      return;
+    }
+
+    this.syncOrigin = origin;
+    toElement.scrollTop = targetTop;
+    window.clearTimeout(this.syncReleaseTimer);
+    this.syncReleaseTimer = window.setTimeout(() => {
+      this.syncOrigin = null;
+      this.syncReleaseTimer = null;
+    }, 50);
+  },
+  handleSourceScroll(event) {
+    if (!this.showSourcePane || !this.showPreviewPane) {
+      return;
+    }
+
+    const source = event.target;
+    const preview = document.getElementById('preview');
+    this.syncPaneScroll(source, preview, 'source');
+  },
+  handlePreviewScroll(event) {
+    if (!this.showSourcePane || !this.showPreviewPane) {
+      return;
+    }
+
+    const preview = event.target;
+    const source = document.getElementById('editor');
+    this.syncPaneScroll(preview, source, 'preview');
+  },
   renderNow() {
     const rawHtml = marked.parse(this.markdown);
     this.renderedHtml = DOMPurify.sanitize(rawHtml);
     this.statusMessage = 'Preview updated';
   },
   fileLabel() {
+    if (this.isCheatSheetOpen) {
+      return 'Markdown Cheat Sheet';
+    }
     if (this.currentFilePath) {
       return filenameFromPath(this.currentFilePath);
     }
     return `${this.markdown.length} chars`;
+  },
+  menuItemLabel(item) {
+    if (item.action === 'CheatSheet') {
+      return this.isCheatSheetOpen ? 'Close Cheat Sheet' : 'Markdown Cheat Sheet';
+    }
+    if (item.action === 'ToggleSourcePane') {
+      return this.showSourcePane ? 'Hide Source Pane' : 'Show Source Pane';
+    }
+    if (item.action === 'TogglePreviewPane') {
+      return this.showPreviewPane ? 'Hide Preview Pane' : 'Show Preview Pane';
+    }
+    return item.label;
+  },
+  mainLayoutClass() {
+    return this.showSourcePane && this.showPreviewPane
+      ? 'grid h-[calc(100vh-3rem)] grid-cols-1 gap-px bg-slate-700 md:grid-cols-2'
+      : 'grid h-[calc(100vh-3rem)] grid-cols-1 gap-px bg-slate-700';
+  },
+  toggleSourcePane() {
+    if (this.showSourcePane && !this.showPreviewPane) {
+      this.statusMessage = 'At least one pane must remain visible';
+      return;
+    }
+
+    this.showSourcePane = !this.showSourcePane;
+    this.statusMessage = this.showSourcePane ? 'Source pane shown' : 'Source pane hidden';
+  },
+  togglePreviewPane() {
+    if (this.showPreviewPane && !this.showSourcePane) {
+      this.statusMessage = 'At least one pane must remain visible';
+      return;
+    }
+
+    this.showPreviewPane = !this.showPreviewPane;
+    this.statusMessage = this.showPreviewPane ? 'Preview pane shown' : 'Preview pane hidden';
   },
   toggleMenu(menuId, event) {
     if (this.openMenu === menuId) {
@@ -128,7 +278,63 @@ window.markdownViewer = () => ({
   closeMenu() {
     this.openMenu = null;
   },
+  openCheatSheet() {
+    if (this.isCheatSheetOpen) {
+      this.statusMessage = 'Cheat sheet already open';
+      return;
+    }
+
+    this.savedDocumentState = {
+      markdown: this.markdown,
+      currentFilePath: this.currentFilePath,
+      history: [...this.history],
+      historyIndex: this.historyIndex,
+    };
+
+    this.isCheatSheetOpen = true;
+    this.applyMarkdown(cheatSheetMarkdown, { resetHistory: true, recordHistory: false });
+    this.currentFilePath = '';
+    this.statusMessage = 'Cheat sheet opened';
+  },
+  closeCheatSheet() {
+    if (!this.isCheatSheetOpen) {
+      return;
+    }
+
+    const fallbackState = {
+      markdown: initialMarkdown,
+      currentFilePath: '',
+      history: [initialMarkdown],
+      historyIndex: 0,
+    };
+    const state = this.savedDocumentState ?? fallbackState;
+
+    this.isCheatSheetOpen = false;
+    this.markdown = state.markdown;
+    this.currentFilePath = state.currentFilePath;
+    this.history = state.history.length > 0 ? [...state.history] : [state.markdown];
+    this.historyIndex = Math.min(Math.max(state.historyIndex, 0), this.history.length - 1);
+    this.renderNow();
+    this.savedDocumentState = null;
+    this.statusMessage = 'Cheat sheet closed';
+  },
   async handleMenuAction(action) {
+    if (action === 'CheatSheet') {
+      if (this.isCheatSheetOpen) {
+        this.closeCheatSheet();
+      } else {
+        this.openCheatSheet();
+      }
+      this.closeMenu();
+      return;
+    }
+
+    if (this.isCheatSheetOpen && (action === 'OpenFile' || action === 'SaveFile' || action === 'ClearDocument')) {
+      this.statusMessage = 'Close cheat sheet first to edit files';
+      this.closeMenu();
+      return;
+    }
+
     if (action === 'OpenFile') {
       const app = backendApp();
       if (!app?.OpenFile) {
@@ -146,13 +352,24 @@ window.markdownViewer = () => ({
 
         const content = payload.content ?? payload.Content ?? '';
         const path = payload.path ?? payload.Path ?? '';
-        this.markdown = content;
+        this.applyMarkdown(content, { resetHistory: true, recordHistory: false });
         this.currentFilePath = path;
-        this.renderNow();
         this.statusMessage = `Opened ${filenameFromPath(path)}`;
       } catch (error) {
         this.statusMessage = 'Failed to open file';
       }
+      this.closeMenu();
+      return;
+    }
+
+    if (action === 'Undo') {
+      this.undo();
+      this.closeMenu();
+      return;
+    }
+
+    if (action === 'Redo') {
+      this.redo();
       this.closeMenu();
       return;
     }
@@ -181,35 +398,29 @@ window.markdownViewer = () => ({
       return;
     }
 
-    if (action === 'ExportHTML') {
-      const app = backendApp();
-      if (!app?.ExportHTML) {
-        this.statusMessage = 'Export is only available inside Wails';
+    if (action === 'ClearDocument') {
+      const confirmed = window.confirm('Clear the current document? This can be undone with Edit > Undo.');
+      if (!confirmed) {
+        this.statusMessage = 'Clear canceled';
         this.closeMenu();
         return;
       }
-      try {
-        this.renderNow();
-        const exportPath = await app.ExportHTML(this.renderedHtml, this.currentFilePath);
-        if (!exportPath) {
-          this.statusMessage = 'Export canceled';
-          this.closeMenu();
-          return;
-        }
 
-        this.statusMessage = `Exported ${filenameFromPath(exportPath)}`;
-      } catch (error) {
-        this.statusMessage = 'Failed to export HTML';
-      }
+      this.applyMarkdown('');
+      this.currentFilePath = '';
+      this.statusMessage = 'Cleared document';
       this.closeMenu();
       return;
     }
 
-    if (action === 'ClearDocument') {
-      this.markdown = '';
-      this.currentFilePath = '';
-      this.renderNow();
-      this.statusMessage = 'Cleared document';
+    if (action === 'ToggleSourcePane') {
+      this.toggleSourcePane();
+      this.closeMenu();
+      return;
+    }
+
+    if (action === 'TogglePreviewPane') {
+      this.togglePreviewPane();
       this.closeMenu();
       return;
     }
@@ -226,6 +437,11 @@ window.markdownViewer = () => ({
     event.preventDefault();
     const href = link.getAttribute('href');
     if (!href) {
+      return;
+    }
+
+    if (href === cheatSheetCloseHref) {
+      this.closeCheatSheet();
       return;
     }
 
@@ -266,7 +482,7 @@ document.querySelector('#app').innerHTML = `
                     type="button"
                     class="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-slate-700"
                     @click.stop="handleMenuAction(item.action)"
-                    x-text="item.label"
+                    x-text="menuItemLabel(item)"
                   ></button>
                 </template>
               </div>
@@ -276,8 +492,8 @@ document.querySelector('#app').innerHTML = `
       </div>
     </header>
 
-    <main class="grid h-[calc(100vh-3rem)] grid-cols-1 gap-px bg-slate-700 md:grid-cols-2">
-      <section class="flex h-full min-h-0 flex-col bg-slate-900/70">
+    <main :class="mainLayoutClass()">
+      <section x-show="showSourcePane" class="flex h-full min-h-0 flex-col bg-slate-900/70">
         <div class="flex items-center justify-between border-b border-slate-700 px-4 py-2 text-sm">
           <h2 class="font-semibold tracking-wide text-slate-100">Markdown Source</h2>
           <span class="font-mono text-xs text-slate-400" x-text="fileLabel()"></span>
@@ -286,22 +502,26 @@ document.querySelector('#app').innerHTML = `
         <textarea
           id="editor"
           x-model="markdown"
-          @input="scheduleRender()"
+          @input="handleEditorInput($event.target.value)"
+          @scroll="handleSourceScroll($event)"
           class="h-full w-full resize-none border-0 bg-slate-900/40 p-4 font-mono text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-500"
           placeholder="# Start writing markdown..."
           spellcheck="false"
+          :readonly="isCheatSheetOpen"
         ></textarea>
       </section>
 
-      <section class="flex h-full min-h-0 flex-col bg-slate-900/60">
+      <section x-show="showPreviewPane" class="flex h-full min-h-0 flex-col bg-slate-900/60">
         <div class="flex items-center justify-between border-b border-slate-700 px-4 py-2 text-sm">
           <h2 class="font-semibold tracking-wide text-slate-100">Rendered Preview</h2>
           <span class="text-xs text-cyan-300" x-text="statusMessage"></span>
         </div>
         <article
+          id="preview"
           class="markdown-preview h-full overflow-y-auto p-5 text-left"
           x-html="renderedHtml"
           @click="handlePreviewClick($event)"
+          @scroll="handlePreviewScroll($event)"
         ></article>
       </section>
     </main>

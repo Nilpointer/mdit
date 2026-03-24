@@ -1,19 +1,100 @@
-# README
+# mdit
 
-## About
+mdit is a desktop Markdown viewer/editor built with **Golang + Wails**.
 
-This is the official Wails Vanilla template.
+It provides a split-pane workspace:
+- left pane: Markdown source editor
+- right pane: live rendered preview
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+## Features
 
-## Live Development
+- Live Markdown rendering (`marked` + `DOMPurify`)
+- Top menu bar with file/edit/view/help menus
+- Open and save Markdown files through native dialogs
+- Undo/redo history in the editor
+- View menu toggles to show/hide source or preview pane
+- Integrated Markdown cheat sheet with state restore on close
+- External link opening via Wails browser integration
+- Responsive split layout for narrower windows
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+## Tech Stack
 
-## Building
+- Backend: Go + Wails v2
+- Frontend: Vanilla JS + Alpine.js + TailwindCSS + Vite
 
-To build a redistributable, production mode package, use `wails build`.
+## Prerequisites
+
+- Go (see `go.mod`)
+- Node.js / npm
+- Wails CLI
+
+Install Wails CLI:
+
+```bash
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
+```
+
+### Linux notes
+
+On modern Fedora/Ubuntu setups using WebKitGTK 4.1, build with:
+
+```bash
+wails build -tags webkit2_41
+```
+
+Fedora packages typically required:
+
+```bash
+sudo dnf install gcc pkgconf-pkg-config glib2-devel gtk3-devel webkit2gtk4.1-devel libsoup3-devel
+```
+
+## Run in Development
+
+From project root:
+
+```bash
+make dev
+```
+
+Equivalent direct command:
+
+```bash
+wails dev
+```
+
+## Build
+
+With Makefile:
+
+```bash
+make build
+```
+
+Linux WebKit 4.1 example:
+
+```bash
+wails build -clean -tags webkit2_41
+```
+
+## Make Targets
+
+- `make help` - list targets
+- `make dev` - run Wails dev mode
+- `make build` - production build
+- `make frontend-build` - build frontend only
+- `make clean` - remove local build outputs
+
+## Releases
+
+GitHub Actions workflow at `.github/workflows/release.yml` builds release artifacts for:
+
+- Linux
+- Windows
+- macOS
+
+Trigger a release by pushing a version tag:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
