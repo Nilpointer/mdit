@@ -11,7 +11,8 @@ import (
 
 // App struct
 type App struct {
-	ctx context.Context
+	ctx         context.Context
+	lastOpenDir string
 }
 
 type FilePayload struct {
@@ -31,20 +32,28 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) OpenFile() (*FilePayload, error) {
-	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+	dialogOptions := runtime.OpenDialogOptions{
 		Title: "Open Markdown File",
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Markdown files (*.md, *.markdown)", Pattern: "*.md;*.markdown"},
 			{DisplayName: "Text files (*.txt)", Pattern: "*.txt"},
 			{DisplayName: "All files", Pattern: "*"},
 		},
-	})
+	}
+
+	if a.lastOpenDir != "" {
+		dialogOptions.DefaultDirectory = a.lastOpenDir
+	}
+
+	path, err := runtime.OpenFileDialog(a.ctx, dialogOptions)
 	if err != nil {
 		return nil, err
 	}
 	if path == "" {
 		return nil, nil
 	}
+
+	a.lastOpenDir = filepath.Dir(path)
 
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -77,6 +86,8 @@ func (a *App) SaveFile(content, currentPath string) (string, error) {
 	if filepath.Ext(savePath) == "" {
 		savePath += ".md"
 	}
+
+	a.lastOpenDir = filepath.Dir(savePath)
 
 	if err := os.WriteFile(savePath, []byte(content), 0o644); err != nil {
 		return "", err

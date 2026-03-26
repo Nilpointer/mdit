@@ -91,6 +91,8 @@ window.markdownViewer = () => ({
       items: [
         { label: 'Toggle Source Pane', action: 'ToggleSourcePane' },
         { label: 'Toggle Preview Pane', action: 'TogglePreviewPane' },
+        { type: 'divider', action: 'ViewDivider' },
+        { label: 'Close All Tabs', action: 'CloseAllTabs' },
       ],
     },
     {
@@ -187,6 +189,21 @@ window.markdownViewer = () => ({
   closeTabFromButton(tabId, event) {
     event.stopPropagation();
     this.closeTab(tabId);
+  },
+  closeAllTabs() {
+    const dirtyCount = this.tabs.filter((tab) => tab.isDirty).length;
+    if (dirtyCount > 0) {
+      const confirmed = window.confirm(`Close all tabs? ${dirtyCount} tab(s) have unsaved changes.`);
+      if (!confirmed) {
+        return false;
+      }
+    }
+
+    this.tabs = [];
+    this.activeTabId = null;
+    this.createTab({ markdown: '', title: 'untitled.md', kind: 'file' });
+    this.statusMessage = 'All tabs closed';
+    return true;
   },
   activateAdjacentTab(direction) {
     if (this.tabs.length <= 1) {
@@ -643,6 +660,12 @@ window.markdownViewer = () => ({
 
     if (action === 'TogglePreviewPane') {
       this.togglePreviewPane();
+      this.closeMenu();
+      return;
+    }
+
+    if (action === 'CloseAllTabs') {
+      this.closeAllTabs();
       this.closeMenu();
       return;
     }
