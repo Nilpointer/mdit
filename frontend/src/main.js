@@ -3,9 +3,11 @@ import './style.css';
 import Alpine from 'alpinejs';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
+import 'remixicon/fonts/remixicon.css';
 import cheatSheetMarkdown from './assets/markdown/cheatsheet.md?raw';
+import aboutMarkdown from './assets/markdown/about.md?raw';
 
-import { BrowserOpenURL } from '../wailsjs/runtime/runtime';
+import { BrowserOpenURL, Quit } from '../wailsjs/runtime/runtime';
 
 const initialMarkdown = `# mdit Markdown Viewer
 
@@ -46,6 +48,7 @@ const filenameFromPath = (path) => {
 };
 
 const cheatSheetCloseHref = '#close-cheatsheet';
+const aboutCloseHref = '#close-about';
 
 window.markdownViewer = () => ({
   markdown: initialMarkdown,
@@ -54,7 +57,7 @@ window.markdownViewer = () => ({
   currentFilePath: '',
   showSourcePane: true,
   showPreviewPane: true,
-  isCheatSheetOpen: false,
+  activeUtilityDoc: null,
   savedDocumentState: null,
   history: [initialMarkdown],
   historyIndex: 0,
@@ -71,6 +74,8 @@ window.markdownViewer = () => ({
       items: [
         { label: 'Open', action: 'OpenFile' },
         { label: 'Save', action: 'SaveFile' },
+        { type: 'divider', action: 'FileDivider' },
+        { label: 'Quit', action: 'QuitApp' },
       ],
     },
     {
@@ -213,8 +218,11 @@ window.markdownViewer = () => ({
     this.statusMessage = 'Preview updated';
   },
   fileLabel() {
-    if (this.isCheatSheetOpen) {
+    if (this.activeUtilityDoc === 'cheatsheet') {
       return 'Markdown Cheat Sheet';
+    }
+    if (this.activeUtilityDoc === 'about') {
+      return 'About mdit';
     }
     if (this.currentFilePath) {
       return filenameFromPath(this.currentFilePath);
@@ -223,7 +231,10 @@ window.markdownViewer = () => ({
   },
   menuItemLabel(item) {
     if (item.action === 'CheatSheet') {
-      return this.isCheatSheetOpen ? 'Close Cheat Sheet' : 'Markdown Cheat Sheet';
+      return this.activeUtilityDoc === 'cheatsheet' ? 'Close Cheat Sheet' : 'Markdown Cheat Sheet';
+    }
+    if (item.action === 'About') {
+      return this.activeUtilityDoc === 'about' ? 'Close About' : 'About mdit';
     }
     if (item.action === 'ToggleSourcePane') {
       return this.showSourcePane ? 'Hide Source Pane' : 'Show Source Pane';
@@ -235,8 +246,13 @@ window.markdownViewer = () => ({
   },
   mainLayoutClass() {
     return this.showSourcePane && this.showPreviewPane
-      ? 'grid h-[calc(100vh-3rem)] grid-cols-1 gap-px bg-slate-700 md:grid-cols-2'
-      : 'grid h-[calc(100vh-3rem)] grid-cols-1 gap-px bg-slate-700';
+      ? 'grid h-[calc(100vh-5rem)] grid-cols-1 gap-px bg-slate-700 md:grid-cols-2'
+      : 'grid h-[calc(100vh-5rem)] grid-cols-1 gap-px bg-slate-700';
+  },
+  handleIconAction(action) {
+    if (action === 'QuitApp') {
+      Quit();
+    }
   },
   toggleSourcePane() {
     if (this.showSourcePane && !this.showPreviewPane) {
@@ -278,26 +294,23 @@ window.markdownViewer = () => ({
   closeMenu() {
     this.openMenu = null;
   },
-  openCheatSheet() {
-    if (this.isCheatSheetOpen) {
-      this.statusMessage = 'Cheat sheet already open';
-      return;
+  openUtilityDocument(kind, content, statusMessage) {
+    if (!this.activeUtilityDoc) {
+      this.savedDocumentState = {
+        markdown: this.markdown,
+        currentFilePath: this.currentFilePath,
+        history: [...this.history],
+        historyIndex: this.historyIndex,
+      };
     }
 
-    this.savedDocumentState = {
-      markdown: this.markdown,
-      currentFilePath: this.currentFilePath,
-      history: [...this.history],
-      historyIndex: this.historyIndex,
-    };
-
-    this.isCheatSheetOpen = true;
-    this.applyMarkdown(cheatSheetMarkdown, { resetHistory: true, recordHistory: false });
+    this.activeUtilityDoc = kind;
+    this.applyMarkdown(content, { resetHistory: true, recordHistory: false });
     this.currentFilePath = '';
-    this.statusMessage = 'Cheat sheet opened';
+    this.statusMessage = statusMessage;
   },
-  closeCheatSheet() {
-    if (!this.isCheatSheetOpen) {
+  closeUtilityDocument(statusMessage = 'Helper page closed') {
+    if (!this.activeUtilityDoc) {
       return;
     }
 
@@ -309,28 +322,44 @@ window.markdownViewer = () => ({
     };
     const state = this.savedDocumentState ?? fallbackState;
 
-    this.isCheatSheetOpen = false;
+    this.activeUtilityDoc = null;
     this.markdown = state.markdown;
     this.currentFilePath = state.currentFilePath;
     this.history = state.history.length > 0 ? [...state.history] : [state.markdown];
     this.historyIndex = Math.min(Math.max(state.historyIndex, 0), this.history.length - 1);
     this.renderNow();
     this.savedDocumentState = null;
-    this.statusMessage = 'Cheat sheet closed';
+    this.statusMessage = statusMessage;
   },
   async handleMenuAction(action) {
+    if (action === 'QuitApp') {
+      Quit();
+      this.closeMenu();
+      return;
+    }
+
     if (action === 'CheatSheet') {
-      if (this.isCheatSheetOpen) {
-        this.closeCheatSheet();
+      if (this.activeUtilityDoc === 'cheatsheet') {
+        this.closeUtilityDocument('Cheat sheet closed');
       } else {
-        this.openCheatSheet();
+        this.openUtilityDocument('cheatsheet', cheatSheetMarkdown, 'Cheat sheet opened');
       }
       this.closeMenu();
       return;
     }
 
-    if (this.isCheatSheetOpen && (action === 'OpenFile' || action === 'SaveFile' || action === 'ClearDocument')) {
-      this.statusMessage = 'Close cheat sheet first to edit files';
+    if (action === 'About') {
+      if (this.activeUtilityDoc === 'about') {
+        this.closeUtilityDocument('About page closed');
+      } else {
+        this.openUtilityDocument('about', aboutMarkdown, 'About page opened');
+      }
+      this.closeMenu();
+      return;
+    }
+
+    if (this.activeUtilityDoc && (action === 'OpenFile' || action === 'SaveFile' || action === 'ClearDocument')) {
+      this.statusMessage = 'Close helper page first to edit files';
       this.closeMenu();
       return;
     }
@@ -440,8 +469,13 @@ window.markdownViewer = () => ({
       return;
     }
 
-    if (href === cheatSheetCloseHref) {
-      this.closeCheatSheet();
+    if (href === cheatSheetCloseHref && this.activeUtilityDoc === 'cheatsheet') {
+      this.closeUtilityDocument('Cheat sheet closed');
+      return;
+    }
+
+    if (href === aboutCloseHref && this.activeUtilityDoc === 'about') {
+      this.closeUtilityDocument('About page closed');
       return;
     }
 
@@ -452,11 +486,56 @@ window.markdownViewer = () => ({
 });
 
 document.querySelector('#app').innerHTML = `
-  <div class="h-screen select-none bg-slate-900/90 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100" x-data="markdownViewer()" @keydown.escape.window="closeMenu()" @click="closeMenu()">
-    <header class="border-b border-slate-700/80 bg-slate-900/80 backdrop-blur">
-      <div class="flex h-12 items-center justify-between px-3 sm:px-4">
-        <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/90">
-          <span class="inline-flex h-2.5 w-2.5 rounded-full bg-cyan-300"></span>
+  <div class="app-shell h-screen select-none" x-data="markdownViewer()" @keydown.escape.window="closeMenu()" @click="closeMenu()">
+    <header class="app-header">
+      <div class="icon-toolbar flex h-10 items-center justify-between px-3 sm:px-4">
+        <div class="flex items-center gap-1">
+          <button
+            type="button"
+            class="tool-btn"
+            title="Open markdown file"
+            @click.stop="handleMenuAction('OpenFile')"
+          >
+            <i class="ri-folder-open-line text-base"></i>
+            <span>Open</span>
+          </button>
+
+          <button
+            type="button"
+            class="tool-btn"
+            @click.stop="toggleSourcePane()"
+            :title="showSourcePane ? 'Hide left panel' : 'Show left panel'"
+          >
+            <i class="ri-layout-left-line text-base"></i>
+            <span x-text="showSourcePane ? 'Hide Left' : 'Show Left'"></span>
+          </button>
+
+          <button
+            type="button"
+            class="tool-btn"
+            @click.stop="togglePreviewPane()"
+            :title="showPreviewPane ? 'Hide right panel' : 'Show right panel'"
+          >
+            <i class="ri-layout-right-line text-base"></i>
+            <span x-text="showPreviewPane ? 'Hide Right' : 'Show Right'"></span>
+          </button>
+        </div>
+        <div class="flex items-center gap-1">
+          <button
+            type="button"
+            title="Close mdit"
+            aria-label="Close and exit"
+            class="tool-btn"
+            @click.stop="handleIconAction('QuitApp')"
+          >
+            <i class="ri-close-line text-base"></i>
+            <span>Exit</span>
+          </button>
+        </div>
+      </div>
+      <div class="flex h-10 items-center justify-between px-3 sm:px-4">
+        <div class="brand-mark flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em]">
+          <span class="brand-dot inline-flex h-2.5 w-2.5 rounded-full"></span>
           mdit
         </div>
         <nav class="flex items-center gap-1 text-sm">
@@ -464,9 +543,9 @@ document.querySelector('#app').innerHTML = `
             <div class="relative">
               <button
                 type="button"
-                class="rounded-md px-3 py-1.5 text-slate-200 transition hover:bg-slate-700/70"
+                class="menu-btn"
                 @click.stop="toggleMenu(menu.id, $event)"
-                :class="openMenu === menu.id ? 'bg-slate-700 text-white' : ''"
+                :class="openMenu === menu.id ? 'menu-btn-active' : ''"
                 x-text="menu.label"
               ></button>
 
@@ -474,16 +553,20 @@ document.querySelector('#app').innerHTML = `
                 x-show="openMenu === menu.id"
                 x-transition
                 @click.stop
-                class="absolute top-10 z-20 w-48 max-w-[calc(100vw-1rem)] rounded-lg border border-slate-700 bg-slate-900/95 p-1 shadow-panel"
+                class="menu-panel absolute top-10 z-20 w-48 max-w-[calc(100vw-1rem)] p-1 shadow-panel"
                 :class="menuPanelClass(menu.id)"
               >
                 <template x-for="item in menu.items" :key="item.action">
-                  <button
-                    type="button"
-                    class="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-slate-700"
-                    @click.stop="handleMenuAction(item.action)"
-                    x-text="menuItemLabel(item)"
-                  ></button>
+                  <div>
+                    <div x-show="item.type === 'divider'" class="my-1 border-t border-[hsl(var(--s)/0.84)]"></div>
+                    <button
+                      x-show="item.type !== 'divider'"
+                      type="button"
+                      class="menu-item"
+                      @click.stop="handleMenuAction(item.action)"
+                      x-text="menuItemLabel(item)"
+                    ></button>
+                  </div>
                 </template>
               </div>
             </div>
@@ -493,10 +576,10 @@ document.querySelector('#app').innerHTML = `
     </header>
 
     <main :class="mainLayoutClass()">
-      <section x-show="showSourcePane" class="flex h-full min-h-0 flex-col bg-slate-900/70">
-        <div class="flex items-center justify-between border-b border-slate-700 px-4 py-2 text-sm">
-          <h2 class="font-semibold tracking-wide text-slate-100">Markdown Source</h2>
-          <span class="font-mono text-xs text-slate-400" x-text="fileLabel()"></span>
+      <section x-show="showSourcePane" class="pane flex h-full min-h-0 flex-col">
+        <div class="pane-header flex items-center justify-between px-4 py-2 text-sm">
+          <h2 class="font-semibold tracking-wide">Markdown Source</h2>
+          <span class="pane-meta font-mono text-xs" x-text="fileLabel()"></span>
         </div>
         <label class="sr-only" for="editor">Markdown editor</label>
         <textarea
@@ -504,17 +587,17 @@ document.querySelector('#app').innerHTML = `
           x-model="markdown"
           @input="handleEditorInput($event.target.value)"
           @scroll="handleSourceScroll($event)"
-          class="h-full w-full resize-none border-0 bg-slate-900/40 p-4 font-mono text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-500"
+          class="pane-editor h-full w-full resize-none border-0 p-4 font-mono text-sm leading-6 outline-none"
           placeholder="# Start writing markdown..."
           spellcheck="false"
-          :readonly="isCheatSheetOpen"
+          :readonly="activeUtilityDoc !== null"
         ></textarea>
       </section>
 
-      <section x-show="showPreviewPane" class="flex h-full min-h-0 flex-col bg-slate-900/60">
-        <div class="flex items-center justify-between border-b border-slate-700 px-4 py-2 text-sm">
-          <h2 class="font-semibold tracking-wide text-slate-100">Rendered Preview</h2>
-          <span class="text-xs text-cyan-300" x-text="statusMessage"></span>
+      <section x-show="showPreviewPane" class="pane flex h-full min-h-0 flex-col">
+        <div class="pane-header flex items-center justify-between px-4 py-2 text-sm">
+          <h2 class="font-semibold tracking-wide">Rendered Preview</h2>
+          <span class="status-pill text-xs" x-text="statusMessage"></span>
         </div>
         <article
           id="preview"

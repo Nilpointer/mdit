@@ -10,6 +10,29 @@
 }
 
 @layer base {
+  :root {
+    --p: 184 72% 38%;
+    --pc: 195 100% 95%;
+    --s: 210 18% 22%;
+    --sc: 210 35% 92%;
+    --a: 158 64% 40%;
+    --ac: 160 80% 95%;
+    --n: 215 28% 12%;
+    --nc: 210 26% 94%;
+    --b1: 218 28% 15%;
+    --b2: 218 26% 13%;
+    --b3: 220 24% 10%;
+    --bc: 210 26% 92%;
+    --su: 146 52% 38%;
+    --wa: 40 88% 52%;
+    --er: 0 70% 52%;
+    --control-bg: hsl(var(--s) / 0.46);
+    --control-bg-hover: hsl(var(--s) / 0.8);
+    --control-border: hsl(var(--s) / 0.86);
+    --control-text: hsl(var(--sc));
+    --control-text-active: hsl(var(--pc));
+  }
+
   html,
   body,
   #app {
@@ -27,28 +50,134 @@
 
 @layer components {
   .markdown-preview {
-    @apply text-slate-100;
+    color: hsl(var(--bc));
+  }
+
+  .app-shell {
+    color: hsl(var(--bc));
+    background:
+      radial-gradient(1200px 500px at -10% -10%, hsl(var(--p) / 0.2), transparent),
+      radial-gradient(900px 380px at 110% 0%, hsl(var(--a) / 0.12), transparent),
+      linear-gradient(145deg, hsl(var(--b1)), hsl(var(--b2)) 52%, hsl(var(--b3)));
+  }
+
+  .app-header {
+    border-bottom: 1px solid hsl(var(--s) / 0.84);
+    background: hsl(var(--n) / 0.84);
+    backdrop-filter: blur(8px);
+  }
+
+  .icon-toolbar {
+    border-bottom: 1px solid hsl(var(--s) / 0.76);
+  }
+
+  .tool-btn {
+    @apply inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm font-semibold transition;
+    border-color: var(--control-border);
+    background: var(--control-bg);
+    color: var(--control-text);
+  }
+
+  .tool-btn:hover {
+    border-color: hsl(var(--p) / 0.72);
+    background: hsl(var(--p) / 0.24);
+    color: var(--control-text-active);
+  }
+
+  .brand-mark {
+    color: hsl(var(--pc));
+  }
+
+  .brand-dot {
+    background: hsl(var(--p));
+    box-shadow: 0 0 0 3px hsl(var(--p) / 0.2);
+  }
+
+  .menu-btn {
+    @apply rounded-md px-3 py-1.5 transition;
+    color: var(--control-text);
+  }
+
+  .menu-btn:hover {
+    background: var(--control-bg-hover);
+  }
+
+  .menu-btn-active {
+    background: hsl(var(--p) / 0.24);
+    color: var(--control-text-active);
+  }
+
+  .menu-panel {
+    @apply rounded-lg border;
+    border-color: var(--control-border);
+    background: hsl(var(--n) / 0.96);
+  }
+
+  .menu-item {
+    @apply flex w-full items-center rounded-md px-3 py-2 text-left text-sm transition;
+    color: var(--control-text);
+  }
+
+  .menu-item:hover {
+    background: var(--control-bg-hover);
+    color: hsl(var(--control-text-active));
+  }
+
+  .pane {
+    background: hsl(var(--b1) / 0.72);
+  }
+
+  .pane-header {
+    border-bottom: 1px solid hsl(var(--s) / 0.84);
+    color: hsl(var(--bc));
+  }
+
+  .pane-meta {
+    color: hsl(var(--sc) / 0.72);
+  }
+
+  .pane-editor {
+    color: hsl(var(--bc));
+    background: hsl(var(--b2) / 0.74);
+  }
+
+  .pane-editor::placeholder {
+    color: hsl(var(--sc) / 0.52);
+  }
+
+  .status-pill {
+    color: hsl(var(--ac));
+    background: hsl(var(--a) / 0.2);
+    border: 1px solid hsl(var(--a) / 0.35);
+    border-radius: 999px;
+    padding: 0.15rem 0.5rem;
   }
 
   .markdown-preview h1 {
-    @apply mb-4 mt-1 border-b border-slate-700 pb-2 text-3xl font-bold text-white;
+    @apply mb-4 mt-1 border-b pb-2 text-3xl font-bold;
+    border-color: hsl(var(--s) / 0.8);
+    color: hsl(var(--bc));
   }
 
   .markdown-preview h2 {
-    @apply mb-3 mt-6 text-2xl font-semibold text-slate-100;
+    @apply mb-3 mt-6 text-2xl font-semibold;
+    color: hsl(var(--bc));
   }
 
   .markdown-preview h3 {
-    @apply mb-2 mt-5 text-xl font-semibold text-slate-100;
+    @apply mb-2 mt-5 text-xl font-semibold;
+    color: hsl(var(--bc));
   }
 
   .markdown-preview p {
-    @apply my-3 leading-7 text-slate-200;
+    @apply my-3 leading-7;
+    color: hsl(var(--bc) / 0.92);
   }
 
   .markdown-preview ul,
   .markdown-preview ol {
-    @apply my-3 pl-6 text-slate-200;
+    @apply my-3 pl-6;
+    color: hsl(var(--bc) / 0.92);
   }
 
   .markdown-preview ul {
@@ -60,23 +189,36 @@
   }
 
   .markdown-preview code {
-    @apply rounded bg-slate-800 px-1 py-0.5 font-mono text-sm text-cyan-200;
+    @apply rounded px-1 py-0.5 font-mono text-sm;
+    color: hsl(var(--pc));
+    background: hsl(var(--s) / 0.8);
   }
 
   .markdown-preview pre {
-    @apply my-4 overflow-x-auto rounded-lg border border-slate-700 bg-slate-900 p-4;
+    @apply my-4 overflow-x-auto rounded-lg border p-4;
+    border-color: hsl(var(--s) / 0.86);
+    background: hsl(var(--b3) / 0.86);
   }
 
   .markdown-preview pre code {
-    @apply bg-transparent p-0 text-slate-100;
+    @apply bg-transparent p-0;
+    color: hsl(var(--bc));
   }
 
   .markdown-preview blockquote {
-    @apply my-4 border-l-4 border-cyan-400/70 pl-4 text-slate-300;
+    @apply my-4 border-l-4 pl-4;
+    border-color: hsl(var(--p) / 0.72);
+    color: hsl(var(--bc) / 0.84);
   }
 
   .markdown-preview a {
-    @apply text-cyan-300 underline decoration-cyan-500 underline-offset-2 transition hover:text-cyan-200;
+    @apply underline underline-offset-2 transition;
+    color: hsl(var(--p));
+    text-decoration-color: hsl(var(--p) / 0.8);
+  }
+
+  .markdown-preview a:hover {
+    color: hsl(var(--pc));
   }
 
   .markdown-preview table {
@@ -85,10 +227,12 @@
 
   .markdown-preview th,
   .markdown-preview td {
-    @apply border border-slate-700 px-3 py-2 text-left;
+    @apply border px-3 py-2 text-left;
+    border-color: hsl(var(--s) / 0.84);
   }
 
   .markdown-preview hr {
-    @apply my-5 border-slate-700;
+    @apply my-5;
+    border-color: hsl(var(--s) / 0.84);
   }
 }
