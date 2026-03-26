@@ -82,6 +82,12 @@ Linux WebKit 4.1 example:
 wails build -clean -tags webkit2_41
 ```
 
+macOS unsigned app launch (remove Gatekeeper quarantine):
+
+```bash
+xattr -dr com.apple.quarantine build/bin/mdit.app && open build/bin/mdit.app
+```
+
 ## Make Targets
 
 - `make help` - list targets
