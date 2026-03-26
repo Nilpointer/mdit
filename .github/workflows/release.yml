@@ -63,8 +63,22 @@ jobs:
             wails build -clean
           fi
 
-      - name: Archive (Linux/macOS)
-        if: runner.os != 'Windows'
+      - name: Archive (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p dist
+          mkdir -p dist/linux-portable
+          cp build/bin/mdit dist/linux-portable/mdit
+          cp build/appicon.png dist/linux-portable/appicon.png
+          cp packaging/linux/mdit.desktop dist/linux-portable/mdit.desktop
+          cp packaging/linux/run-mdit.sh dist/linux-portable/run-mdit.sh
+          chmod +x dist/linux-portable/mdit
+          chmod +x dist/linux-portable/run-mdit.sh
+          tar -C dist/linux-portable -czf "dist/${{ matrix.archive }}" .
+
+      - name: Archive (macOS)
+        if: runner.os == 'macOS'
         shell: bash
         run: |
           mkdir -p dist

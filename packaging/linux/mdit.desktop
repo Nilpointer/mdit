@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=mdit
+Comment=Markdown viewer and editor
+Exec=sh -c '"$(dirname "%k")/run-mdit.sh"'
+Icon=appicon
+Terminal=false
+Categories=Utility;TextEditor;
+StartupNotify=true
+StartupWMClass=mdit
