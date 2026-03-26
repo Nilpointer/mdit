@@ -26,4 +26,15 @@ This software is free and open source. You use it at your own risk, without warr
 - License information is based on the packages currently used by this project.
 - Please consult each dependency repository for the exact, current license text.
 
+## Keyboard Shortcuts
+
+- `Ctrl/Cmd + O` - Open file
+- `Ctrl/Cmd + S` - Save active tab
+- `Ctrl/Cmd + W` - Close active tab
+- `Ctrl/Cmd + Tab` - Next tab
+- `Ctrl/Cmd + Shift + Tab` - Previous tab
+- `Ctrl/Cmd + Z` - Undo in active tab
+- `Ctrl/Cmd + Shift + Z` - Redo in active tab
+- `Ctrl/Cmd + Y` - Redo in active tab
+
 [Close About](#close-about)

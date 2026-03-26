@@ -51,16 +51,14 @@ const cheatSheetCloseHref = '#close-cheatsheet';
 const aboutCloseHref = '#close-about';
 
 window.markdownViewer = () => ({
-  markdown: initialMarkdown,
+  markdown: '',
   renderedHtml: '',
   statusMessage: 'Ready',
-  currentFilePath: '',
   showSourcePane: true,
   showPreviewPane: true,
-  activeUtilityDoc: null,
-  savedDocumentState: null,
-  history: [initialMarkdown],
-  historyIndex: 0,
+  tabs: [],
+  activeTabId: null,
+  nextTabId: 1,
   historyLimit: 200,
   syncOrigin: null,
   syncReleaseTimer: null,
@@ -105,63 +103,262 @@ window.markdownViewer = () => ({
     },
   ],
   init() {
+    this.createTab({ markdown: initialMarkdown, title: 'untitled.md', kind: 'file' });
     this.renderNow();
+  },
+  activeTab() {
+    return this.tabs.find((tab) => tab.id === this.activeTabId) ?? null;
+  },
+  tabById(tabId) {
+    return this.tabs.find((tab) => tab.id === tabId) ?? null;
+  },
+  makeTabTitle(path, fallback = 'untitled.md') {
+    return path ? filenameFromPath(path) : fallback;
+  },
+  createTab({
+    markdown = '',
+    filePath = '',
+    title,
+    kind = 'file',
+    isDirty = false,
+    focus = true,
+  }) {
+    const tab = {
+      id: this.nextTabId,
+      title: title ?? this.makeTabTitle(filePath),
+      filePath,
+      markdown,
+      kind,
+      isDirty,
+      history: [markdown],
+      historyIndex: 0,
+    };
+
+    this.nextTabId += 1;
+    this.tabs.push(tab);
+
+    if (focus) {
+      this.setActiveTab(tab.id);
+    }
+
+    return tab;
+  },
+  setActiveTab(tabId) {
+    const tab = this.tabById(tabId);
+    if (!tab) {
+      return;
+    }
+
+    this.activeTabId = tabId;
+    this.markdown = tab.markdown;
+    this.renderNow();
+  },
+  closeTab(tabId) {
+    const tab = this.tabById(tabId);
+    if (!tab) {
+      return;
+    }
+
+    if (tab.isDirty) {
+      const confirmed = window.confirm(`Close ${tab.title}? Unsaved changes will be lost.`);
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    const index = this.tabs.findIndex((entry) => entry.id === tabId);
+    if (index < 0) {
+      return;
+    }
+
+    this.tabs.splice(index, 1);
+    if (this.tabs.length === 0) {
+      this.createTab({ markdown: '', title: 'untitled.md', kind: 'file' });
+      this.statusMessage = 'Created new empty tab';
+      return;
+    }
+
+    if (this.activeTabId === tabId) {
+      const fallbackIndex = Math.max(0, index - 1);
+      const fallbackTab = this.tabs[fallbackIndex] ?? this.tabs[0];
+      this.setActiveTab(fallbackTab.id);
+    }
+  },
+  closeTabFromButton(tabId, event) {
+    event.stopPropagation();
+    this.closeTab(tabId);
+  },
+  activateAdjacentTab(direction) {
+    if (this.tabs.length <= 1) {
+      return;
+    }
+
+    const currentIndex = this.tabs.findIndex((tab) => tab.id === this.activeTabId);
+    if (currentIndex < 0) {
+      return;
+    }
+
+    const nextIndex = (currentIndex + direction + this.tabs.length) % this.tabs.length;
+    const nextTab = this.tabs[nextIndex];
+    if (!nextTab) {
+      return;
+    }
+
+    this.setActiveTab(nextTab.id);
+  },
+  handleGlobalKeydown(event) {
+    const hasPrimaryModifier = event.ctrlKey || event.metaKey;
+    if (!hasPrimaryModifier) {
+      return;
+    }
+
+    const key = event.key.toLowerCase();
+
+    if (key === 'o') {
+      event.preventDefault();
+      this.handleMenuAction('OpenFile');
+      return;
+    }
+
+    if (key === 's') {
+      event.preventDefault();
+      this.handleMenuAction('SaveFile');
+      return;
+    }
+
+    if (key === 'w') {
+      event.preventDefault();
+      if (this.activeTabId !== null) {
+        this.closeTab(this.activeTabId);
+      }
+      return;
+    }
+
+    if (key === 'tab') {
+      event.preventDefault();
+      this.activateAdjacentTab(event.shiftKey ? -1 : 1);
+      return;
+    }
+
+    if (key === 'z') {
+      event.preventDefault();
+      if (event.shiftKey) {
+        this.redo();
+      } else {
+        this.undo();
+      }
+      return;
+    }
+
+    if (key === 'y') {
+      event.preventDefault();
+      this.redo();
+    }
+  },
+  openUtilityDocumentAsTab(kind, title, content) {
+    const existing = this.tabs.find((tab) => tab.kind === kind);
+    if (existing) {
+      this.setActiveTab(existing.id);
+      this.statusMessage = `${title} tab focused`;
+      return;
+    }
+
+    this.createTab({ markdown: content, title, kind, isDirty: false, focus: true });
+    this.statusMessage = `${title} opened`;
+  },
+  isUtilityTab(tab) {
+    return tab?.kind === 'cheatsheet' || tab?.kind === 'about';
   },
   scheduleRender() {
     window.clearTimeout(this.renderTimer);
     this.renderTimer = window.setTimeout(() => this.renderNow(), 80);
   },
-  recordHistory(nextValue) {
-    if (nextValue === this.history[this.historyIndex]) {
+  recordHistoryForActive(nextValue) {
+    const tab = this.activeTab();
+    if (!tab) {
+      return;
+    }
+    if (nextValue === tab.history[tab.historyIndex]) {
+      tab.markdown = nextValue;
       return;
     }
 
-    this.history = this.history.slice(0, this.historyIndex + 1);
-    this.history.push(nextValue);
-    if (this.history.length > this.historyLimit) {
-      const overflow = this.history.length - this.historyLimit;
-      this.history.splice(0, overflow);
+    tab.history = tab.history.slice(0, tab.historyIndex + 1);
+    tab.history.push(nextValue);
+    if (tab.history.length > this.historyLimit) {
+      const overflow = tab.history.length - this.historyLimit;
+      tab.history.splice(0, overflow);
     }
-    this.historyIndex = this.history.length - 1;
+    tab.historyIndex = tab.history.length - 1;
+    tab.markdown = nextValue;
+    if (tab.kind === 'file') {
+      tab.isDirty = true;
+    }
   },
-  resetHistory(initialValue) {
-    this.history = [initialValue];
-    this.historyIndex = 0;
-  },
-  applyMarkdown(nextValue, options = {}) {
-    const { resetHistory = false, recordHistory = true } = options;
+  applyMarkdownToActive(nextValue, options = {}) {
+    const { resetHistory = false, recordHistory = true, markDirty = true } = options;
+    const tab = this.activeTab();
+    if (!tab) {
+      return;
+    }
+
     this.markdown = nextValue;
     if (resetHistory) {
-      this.resetHistory(nextValue);
+      tab.history = [nextValue];
+      tab.historyIndex = 0;
+      tab.markdown = nextValue;
     } else if (recordHistory) {
-      this.recordHistory(nextValue);
+      this.recordHistoryForActive(nextValue);
+    } else {
+      tab.markdown = nextValue;
     }
+
+    if (tab.kind === 'file') {
+      tab.isDirty = markDirty;
+    }
+
     this.renderNow();
   },
   undo() {
-    if (this.historyIndex === 0) {
+    const tab = this.activeTab();
+    if (!tab || tab.historyIndex === 0) {
       this.statusMessage = 'Nothing to undo';
       return;
     }
 
-    this.historyIndex -= 1;
-    this.markdown = this.history[this.historyIndex] ?? '';
+    tab.historyIndex -= 1;
+    tab.markdown = tab.history[tab.historyIndex] ?? '';
+    this.markdown = tab.markdown;
+    if (tab.kind === 'file') {
+      tab.isDirty = true;
+    }
     this.renderNow();
     this.statusMessage = 'Undo';
   },
   redo() {
-    if (this.historyIndex >= this.history.length - 1) {
+    const tab = this.activeTab();
+    if (!tab || tab.historyIndex >= tab.history.length - 1) {
       this.statusMessage = 'Nothing to redo';
       return;
     }
 
-    this.historyIndex += 1;
-    this.markdown = this.history[this.historyIndex] ?? '';
+    tab.historyIndex += 1;
+    tab.markdown = tab.history[tab.historyIndex] ?? '';
+    this.markdown = tab.markdown;
+    if (tab.kind === 'file') {
+      tab.isDirty = true;
+    }
     this.renderNow();
     this.statusMessage = 'Redo';
   },
   handleEditorInput(value) {
-    this.recordHistory(value);
+    const tab = this.activeTab();
+    if (!tab || this.isUtilityTab(tab)) {
+      return;
+    }
+
+    this.markdown = value;
+    this.recordHistoryForActive(value);
     this.scheduleRender();
   },
   syncPaneScroll(fromElement, toElement, origin) {
@@ -218,23 +415,30 @@ window.markdownViewer = () => ({
     this.statusMessage = 'Preview updated';
   },
   fileLabel() {
-    if (this.activeUtilityDoc === 'cheatsheet') {
-      return 'Markdown Cheat Sheet';
+    const tab = this.activeTab();
+    if (!tab) {
+      return 'untitled.md';
     }
-    if (this.activeUtilityDoc === 'about') {
-      return 'About mdit';
+
+    const dirtyMarker = tab.isDirty ? ' *' : '';
+    if (tab.filePath) {
+      return `${filenameFromPath(tab.filePath)}${dirtyMarker}`;
     }
-    if (this.currentFilePath) {
-      return filenameFromPath(this.currentFilePath);
+
+    return `${tab.title}${dirtyMarker}`;
+  },
+  tabTooltip(tab) {
+    if (tab.filePath) {
+      return tab.filePath;
     }
-    return `${this.markdown.length} chars`;
+    return tab.title;
   },
   menuItemLabel(item) {
     if (item.action === 'CheatSheet') {
-      return this.activeUtilityDoc === 'cheatsheet' ? 'Close Cheat Sheet' : 'Markdown Cheat Sheet';
+      return this.activeTab()?.kind === 'cheatsheet' ? 'Close Cheat Sheet' : 'Markdown Cheat Sheet';
     }
     if (item.action === 'About') {
-      return this.activeUtilityDoc === 'about' ? 'Close About' : 'About mdit';
+      return this.activeTab()?.kind === 'about' ? 'Close About' : 'About mdit';
     }
     if (item.action === 'ToggleSourcePane') {
       return this.showSourcePane ? 'Hide Source Pane' : 'Show Source Pane';
@@ -246,8 +450,8 @@ window.markdownViewer = () => ({
   },
   mainLayoutClass() {
     return this.showSourcePane && this.showPreviewPane
-      ? 'grid h-[calc(100vh-5rem)] grid-cols-1 gap-px bg-slate-700 md:grid-cols-2'
-      : 'grid h-[calc(100vh-5rem)] grid-cols-1 gap-px bg-slate-700';
+      ? 'grid h-[calc(100vh-7.5rem)] grid-cols-1 gap-px bg-slate-700 md:grid-cols-2'
+      : 'grid h-[calc(100vh-7.5rem)] grid-cols-1 gap-px bg-slate-700';
   },
   handleIconAction(action) {
     if (action === 'QuitApp') {
@@ -294,43 +498,6 @@ window.markdownViewer = () => ({
   closeMenu() {
     this.openMenu = null;
   },
-  openUtilityDocument(kind, content, statusMessage) {
-    if (!this.activeUtilityDoc) {
-      this.savedDocumentState = {
-        markdown: this.markdown,
-        currentFilePath: this.currentFilePath,
-        history: [...this.history],
-        historyIndex: this.historyIndex,
-      };
-    }
-
-    this.activeUtilityDoc = kind;
-    this.applyMarkdown(content, { resetHistory: true, recordHistory: false });
-    this.currentFilePath = '';
-    this.statusMessage = statusMessage;
-  },
-  closeUtilityDocument(statusMessage = 'Helper page closed') {
-    if (!this.activeUtilityDoc) {
-      return;
-    }
-
-    const fallbackState = {
-      markdown: initialMarkdown,
-      currentFilePath: '',
-      history: [initialMarkdown],
-      historyIndex: 0,
-    };
-    const state = this.savedDocumentState ?? fallbackState;
-
-    this.activeUtilityDoc = null;
-    this.markdown = state.markdown;
-    this.currentFilePath = state.currentFilePath;
-    this.history = state.history.length > 0 ? [...state.history] : [state.markdown];
-    this.historyIndex = Math.min(Math.max(state.historyIndex, 0), this.history.length - 1);
-    this.renderNow();
-    this.savedDocumentState = null;
-    this.statusMessage = statusMessage;
-  },
   async handleMenuAction(action) {
     if (action === 'QuitApp') {
       Quit();
@@ -339,27 +506,23 @@ window.markdownViewer = () => ({
     }
 
     if (action === 'CheatSheet') {
-      if (this.activeUtilityDoc === 'cheatsheet') {
-        this.closeUtilityDocument('Cheat sheet closed');
+      if (this.activeTab()?.kind === 'cheatsheet') {
+        this.closeTab(this.activeTabId);
+        this.statusMessage = 'Cheat sheet closed';
       } else {
-        this.openUtilityDocument('cheatsheet', cheatSheetMarkdown, 'Cheat sheet opened');
+        this.openUtilityDocumentAsTab('cheatsheet', 'Markdown Cheat Sheet', cheatSheetMarkdown);
       }
       this.closeMenu();
       return;
     }
 
     if (action === 'About') {
-      if (this.activeUtilityDoc === 'about') {
-        this.closeUtilityDocument('About page closed');
+      if (this.activeTab()?.kind === 'about') {
+        this.closeTab(this.activeTabId);
+        this.statusMessage = 'About page closed';
       } else {
-        this.openUtilityDocument('about', aboutMarkdown, 'About page opened');
+        this.openUtilityDocumentAsTab('about', 'About mdit', aboutMarkdown);
       }
-      this.closeMenu();
-      return;
-    }
-
-    if (this.activeUtilityDoc && (action === 'OpenFile' || action === 'SaveFile' || action === 'ClearDocument')) {
-      this.statusMessage = 'Close helper page first to edit files';
       this.closeMenu();
       return;
     }
@@ -381,8 +544,23 @@ window.markdownViewer = () => ({
 
         const content = payload.content ?? payload.Content ?? '';
         const path = payload.path ?? payload.Path ?? '';
-        this.applyMarkdown(content, { resetHistory: true, recordHistory: false });
-        this.currentFilePath = path;
+
+        const existingTab = this.tabs.find((tab) => tab.kind === 'file' && tab.filePath === path);
+        if (existingTab) {
+          this.setActiveTab(existingTab.id);
+          this.statusMessage = `Focused ${existingTab.title}`;
+          this.closeMenu();
+          return;
+        }
+
+        this.createTab({
+          markdown: content,
+          filePath: path,
+          title: this.makeTabTitle(path),
+          kind: 'file',
+          isDirty: false,
+          focus: true,
+        });
         this.statusMessage = `Opened ${filenameFromPath(path)}`;
       } catch (error) {
         this.statusMessage = 'Failed to open file';
@@ -404,6 +582,13 @@ window.markdownViewer = () => ({
     }
 
     if (action === 'SaveFile') {
+      const tab = this.activeTab();
+      if (!tab || tab.kind !== 'file') {
+        this.statusMessage = 'Save is only available for file tabs';
+        this.closeMenu();
+        return;
+      }
+
       const app = backendApp();
       if (!app?.SaveFile) {
         this.statusMessage = 'Save is only available inside Wails';
@@ -411,14 +596,16 @@ window.markdownViewer = () => ({
         return;
       }
       try {
-        const savedPath = await app.SaveFile(this.markdown, this.currentFilePath);
+        const savedPath = await app.SaveFile(this.markdown, tab.filePath);
         if (!savedPath) {
           this.statusMessage = 'Save canceled';
           this.closeMenu();
           return;
         }
 
-        this.currentFilePath = savedPath;
+        tab.filePath = savedPath;
+        tab.title = this.makeTabTitle(savedPath);
+        tab.isDirty = false;
         this.statusMessage = `Saved ${filenameFromPath(savedPath)}`;
       } catch (error) {
         this.statusMessage = 'Failed to save file';
@@ -428,6 +615,13 @@ window.markdownViewer = () => ({
     }
 
     if (action === 'ClearDocument') {
+      const tab = this.activeTab();
+      if (!tab || tab.kind !== 'file') {
+        this.statusMessage = 'Clear is only available for file tabs';
+        this.closeMenu();
+        return;
+      }
+
       const confirmed = window.confirm('Clear the current document? This can be undone with Edit > Undo.');
       if (!confirmed) {
         this.statusMessage = 'Clear canceled';
@@ -435,8 +629,7 @@ window.markdownViewer = () => ({
         return;
       }
 
-      this.applyMarkdown('');
-      this.currentFilePath = '';
+      this.applyMarkdownToActive('', { resetHistory: false, recordHistory: true, markDirty: true });
       this.statusMessage = 'Cleared document';
       this.closeMenu();
       return;
@@ -469,13 +662,15 @@ window.markdownViewer = () => ({
       return;
     }
 
-    if (href === cheatSheetCloseHref && this.activeUtilityDoc === 'cheatsheet') {
-      this.closeUtilityDocument('Cheat sheet closed');
+    if (href === cheatSheetCloseHref && this.activeTab()?.kind === 'cheatsheet') {
+      this.closeTab(this.activeTabId);
+      this.statusMessage = 'Cheat sheet closed';
       return;
     }
 
-    if (href === aboutCloseHref && this.activeUtilityDoc === 'about') {
-      this.closeUtilityDocument('About page closed');
+    if (href === aboutCloseHref && this.activeTab()?.kind === 'about') {
+      this.closeTab(this.activeTabId);
+      this.statusMessage = 'About page closed';
       return;
     }
 
@@ -486,7 +681,7 @@ window.markdownViewer = () => ({
 });
 
 document.querySelector('#app').innerHTML = `
-  <div class="app-shell h-screen select-none" x-data="markdownViewer()" @keydown.escape.window="closeMenu()" @click="closeMenu()">
+  <div class="app-shell h-screen select-none" x-data="markdownViewer()" @keydown.escape.window="closeMenu()" @keydown.window="handleGlobalKeydown($event)" @click="closeMenu()">
     <header class="app-header">
       <div class="icon-toolbar flex h-10 items-center justify-between px-3 sm:px-4">
         <div class="flex items-center gap-1">
@@ -573,6 +768,27 @@ document.querySelector('#app').innerHTML = `
           </template>
         </nav>
       </div>
+
+      <div class="tabbar flex h-10 items-end overflow-x-auto px-3 sm:px-4" @click.stop>
+        <template x-for="tab in tabs" :key="tab.id">
+          <button
+            type="button"
+            class="tab-btn"
+            :class="activeTabId === tab.id ? 'tab-btn-active' : ''"
+            @click="setActiveTab(tab.id)"
+            :title="tabTooltip(tab)"
+          >
+            <span class="truncate" x-text="tab.title + (tab.isDirty ? ' *' : '')"></span>
+            <span
+              class="tab-close"
+              title="Close tab"
+              @click="closeTabFromButton(tab.id, $event)"
+            >
+              <i class="ri-close-line"></i>
+            </span>
+          </button>
+        </template>
+      </div>
     </header>
 
     <main :class="mainLayoutClass()">
@@ -590,7 +806,7 @@ document.querySelector('#app').innerHTML = `
           class="pane-editor h-full w-full resize-none border-0 p-4 font-mono text-sm leading-6 outline-none"
           placeholder="# Start writing markdown..."
           spellcheck="false"
-          :readonly="activeUtilityDoc !== null"
+          :readonly="isUtilityTab(activeTab())"
         ></textarea>
       </section>
 

@@ -71,6 +71,43 @@
     border-bottom: 1px solid hsl(var(--s) / 0.76);
   }
 
+  .tabbar {
+    border-top: 1px solid hsl(var(--s) / 0.62);
+    border-bottom: 1px solid hsl(var(--s) / 0.76);
+    background: hsl(var(--n) / 0.72);
+  }
+
+  .tab-btn {
+    @apply inline-flex h-9 min-w-[10rem] max-w-[16rem] items-center gap-2 border px-3 text-sm transition;
+    color: hsl(var(--sc) / 0.9);
+    background: hsl(var(--s) / 0.34);
+    border-color: hsl(var(--s) / 0.84);
+    border-bottom: none;
+    border-top-left-radius: 0.6rem;
+    border-top-right-radius: 0.6rem;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .tab-btn:hover {
+    background: hsl(var(--s) / 0.62);
+  }
+
+  .tab-btn-active {
+    color: hsl(var(--pc));
+    background: hsl(var(--p) / 0.28);
+    border-color: hsl(var(--p) / 0.78);
+  }
+
+  .tab-close {
+    @apply ml-auto inline-flex h-5 w-5 items-center justify-center rounded text-xs;
+  }
+
+  .tab-close:hover {
+    background: hsl(var(--s) / 0.9);
+    color: hsl(var(--pc));
+  }
+
   .tool-btn {
     @apply inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm font-semibold transition;
     border-color: var(--control-border);
