@@ -2,6 +2,7 @@ export namespace main {
 	
 	export class FilePayload {
 	    path: string;
+	    title: string;
 	    content: string;
 	
 	    static createFrom(source: any = {}) {
@@ -11,6 +12,7 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.path = source["path"];
+	        this.title = source["title"];
 	        this.content = source["content"];
 	    }
 	}

@@ -8,6 +8,7 @@ import cheatSheetMarkdown from './assets/markdown/cheatsheet.md?raw';
 import aboutMarkdown from './assets/markdown/about.md?raw';
 
 import { BrowserOpenURL, Quit } from '../wailsjs/runtime/runtime';
+import { EventsOn } from '../wailsjs/runtime/runtime';
 
 const initialMarkdown = `# mdit Markdown Viewer
 
@@ -49,6 +50,26 @@ const filenameFromPath = (path) => {
 
 const cheatSheetCloseHref = '#close-cheatsheet';
 const aboutCloseHref = '#close-about';
+let startupFilePayload = null;
+let startupFileHandler = null;
+let startupFileListenerReady = false;
+
+const ensureStartupFileListener = () => {
+  if (startupFileListenerReady || !window.runtime) {
+    return;
+  }
+
+  EventsOn('startup-file', (payload) => {
+    if (startupFileHandler) {
+      startupFileHandler(payload);
+      return;
+    }
+
+    startupFilePayload = payload;
+  });
+
+  startupFileListenerReady = true;
+};
 
 window.markdownViewer = () => ({
   markdown: '',
@@ -65,6 +86,10 @@ window.markdownViewer = () => ({
   openMenu: null,
   menuAlignment: {},
   renderTimer: null,
+  searchQuery: '',
+  searchIndex: -1,
+  searchResultsCount: 0,
+  isSearching: false,
   menus: [
     {
       id: 'file',
@@ -80,8 +105,9 @@ window.markdownViewer = () => ({
       id: 'edit',
       label: 'Edit',
       items: [
-        { label: 'Undo', action: 'Undo' },
+      { label: 'Undo', action: 'Undo' },
         { label: 'Redo', action: 'Redo' },
+        { label: 'Search', action: 'ToggleSearch' },
         { label: 'Clear Document', action: 'ClearDocument' },
       ],
     },
@@ -104,12 +130,34 @@ window.markdownViewer = () => ({
       ],
     },
   ],
-  init() {
-    this.createTab({ markdown: initialMarkdown, title: 'untitled.md', kind: 'file' });
-    this.renderNow();
+  async init() {
+    ensureStartupFileListener();
+
+    const defaultTab = this.createTab({
+      markdown: initialMarkdown,
+      title: 'untitled.md',
+      kind: 'file',
+      focus: false,
+    });
+
+    startupFileHandler = (payload) => {
+      this.openFilePayload(payload, { closeCleanDefaultTab: true });
+    };
+
+    if (startupFilePayload) {
+      const payload = startupFilePayload;
+      startupFilePayload = null;
+      this.openFilePayload(payload, { closeCleanDefaultTab: true });
+      return;
+    }
+
+    this.setActiveTab(defaultTab.id);
   },
   activeTab() {
     return this.tabs.find((tab) => tab.id === this.activeTabId) ?? null;
+  },
+  isCleanUntitledTab(tab) {
+    return tab?.kind === 'file' && !tab.filePath && tab.title === 'untitled.md' && !tab.isDirty;
   },
   tabById(tabId) {
     return this.tabs.find((tab) => tab.id === tabId) ?? null;
@@ -173,18 +221,70 @@ window.markdownViewer = () => ({
       return;
     }
 
-    this.tabs.splice(index, 1);
-    if (this.tabs.length === 0) {
-      this.createTab({ markdown: '', title: 'untitled.md', kind: 'file' });
-      this.statusMessage = 'Created new empty tab';
+    this.removeTab(tabId, { createFallback: true, statusMessage: 'Created new empty tab' });
+  },
+  removeTab(tabId, { createFallback = true, statusMessage = null } = {}) {
+    const index = this.tabs.findIndex((entry) => entry.id === tabId);
+    if (index < 0) {
       return;
     }
 
-    if (this.activeTabId === tabId) {
+    const wasActive = this.activeTabId === tabId;
+    this.tabs.splice(index, 1);
+
+    if (this.tabs.length === 0) {
+      this.activeTabId = null;
+      this.markdown = '';
+      this.renderedHtml = '';
+      if (createFallback) {
+        this.createTab({ markdown: '', title: 'untitled.md', kind: 'file' });
+        if (statusMessage) {
+          this.statusMessage = statusMessage;
+        }
+      }
+      return;
+    }
+
+    if (wasActive) {
       const fallbackIndex = Math.max(0, index - 1);
       const fallbackTab = this.tabs[fallbackIndex] ?? this.tabs[0];
       this.setActiveTab(fallbackTab.id);
     }
+  },
+  closeCleanUntitledTab() {
+    const defaultTab = this.tabs.find((tab) => this.isCleanUntitledTab(tab));
+    if (!defaultTab) {
+      return false;
+    }
+
+    this.removeTab(defaultTab.id, { createFallback: false });
+    return true;
+  },
+  openFilePayload(payload, { closeCleanDefaultTab = true } = {}) {
+    const content = payload.content ?? payload.Content ?? '';
+    const path = payload.path ?? payload.Path ?? '';
+    const title = payload.title ?? payload.Title ?? this.makeTabTitle(path);
+
+    const existingTab = this.tabs.find((tab) => tab.kind === 'file' && tab.filePath === path);
+    if (closeCleanDefaultTab) {
+      this.closeCleanUntitledTab();
+    }
+
+    if (existingTab) {
+      this.setActiveTab(existingTab.id);
+      this.statusMessage = `Focused ${existingTab.title}`;
+      return;
+    }
+
+    this.createTab({
+      markdown: content,
+      filePath: path,
+      title,
+      kind: 'file',
+      isDirty: false,
+      focus: true,
+    });
+    this.statusMessage = `Opened ${filenameFromPath(path)}`;
   },
   closeTabFromButton(tabId, event) {
     event.stopPropagation();
@@ -267,9 +367,16 @@ window.markdownViewer = () => ({
       return;
     }
 
+    if (key === 'f') {
+      event.preventDefault();
+      this.toggleSearch();
+      return;
+    }
+
     if (key === 'y') {
       event.preventDefault();
       this.redo();
+      return;
     }
   },
   openUtilityDocumentAsTab(kind, title, content) {
@@ -428,7 +535,18 @@ window.markdownViewer = () => ({
   },
   renderNow() {
     const rawHtml = marked.parse(this.markdown);
-    this.renderedHtml = DOMPurify.sanitize(rawHtml);
+    let sanitizedHtml = DOMPurify.sanitize(rawHtml);
+
+    if (this.isSearching && this.searchQuery) {
+      try {
+        const regex = new RegExp(`(${this.searchQuery})`, 'gi');
+        sanitizedHtml = sanitizedHtml.replace(regex, '<mark class="bg-cyan-500/30 text-inherit rounded px-0.5">$1</mark>');
+      } catch (e) {
+        // Ignore invalid regex
+      }
+    }
+
+    this.renderedHtml = sanitizedHtml;
     this.statusMessage = 'Preview updated';
   },
   fileLabel() {
@@ -559,26 +677,7 @@ window.markdownViewer = () => ({
           return;
         }
 
-        const content = payload.content ?? payload.Content ?? '';
-        const path = payload.path ?? payload.Path ?? '';
-
-        const existingTab = this.tabs.find((tab) => tab.kind === 'file' && tab.filePath === path);
-        if (existingTab) {
-          this.setActiveTab(existingTab.id);
-          this.statusMessage = `Focused ${existingTab.title}`;
-          this.closeMenu();
-          return;
-        }
-
-        this.createTab({
-          markdown: content,
-          filePath: path,
-          title: this.makeTabTitle(path),
-          kind: 'file',
-          isDirty: false,
-          focus: true,
-        });
-        this.statusMessage = `Opened ${filenameFromPath(path)}`;
+        this.openFilePayload(payload, { closeCleanDefaultTab: true });
       } catch (error) {
         this.statusMessage = 'Failed to open file';
       }
@@ -701,6 +800,102 @@ window.markdownViewer = () => ({
       this.statusMessage = 'Could not open link in browser';
     });
   },
+  handleSearchInput(event) {
+    this.searchQuery = event.target.value;
+    this.performSearch();
+  },
+  toggleSearch() {
+    this.isSearching = !this.isSearching;
+    if (!this.isSearching) {
+      this.clearSearch();
+    } else {
+      this.$nextTick(() => {
+        const input = this.$refs.searchInput;
+        if (input) {
+          input.focus();
+        } else {
+          // Fallback if ref is not available yet
+          const el = document.querySelector('input[placeholder="Search..."]');
+          if (el) el.focus();
+        }
+      });
+    }
+  },
+  performSearch() {
+    const query = this.searchQuery.trim();
+    if (!query) {
+      this.clearSearch();
+      return;
+    }
+
+    const text = this.markdown;
+    const regex = new RegExp(query, 'gi');
+    const matches = [...text.matchAll(regex)];
+
+    if (matches.length === 0) {
+      this.searchResultsCount = 0;
+      this.searchIndex = -1;
+      this.statusMessage = 'No matches found';
+      return;
+    }
+
+    this.searchResultsCount = matches.length;
+    this.searchIndex = 0;
+    this.statusMessage = `Match 1 of ${this.searchResultsCount}`;
+
+    // Scroll to first match in preview
+    this.$nextTick(() => {
+      const preview = document.getElementById('preview');
+      if (preview) {
+        const firstMark = preview.querySelector('mark');
+        if (firstMark) {
+          firstMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    });
+  },
+  nextMatch() {
+    if (this.searchResultsCount === 0) return;
+
+    this.searchIndex = (this.searchIndex + 1) % this.searchResultsCount;
+    this.statusMessage = `Match ${this.searchIndex + 1} of ${this.searchResultsCount}`;
+
+    this.$nextTick(() => {
+      const preview = document.getElementById('preview');
+      if (preview) {
+        const marks = preview.querySelectorAll('mark');
+        const target = marks[this.searchIndex];
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    });
+  },
+  prevMatch() {
+    if (this.searchResultsCount === 0) return;
+
+    this.searchIndex = (this.searchIndex - 1 + this.searchResultsCount) % this.searchResultsCount;
+    this.statusMessage = `Match ${this.searchIndex + 1} of ${this.searchResultsCount}`;
+
+    this.$nextTick(() => {
+      const preview = document.getElementById('preview');
+      if (preview) {
+        const marks = preview.querySelectorAll('mark');
+        const target = marks[this.searchIndex];
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    });
+  },
+  clearSearch() {
+    this.searchQuery = '';
+    this.searchIndex = -1;
+    this.searchResultsCount = 0;
+    this.isSearching = false;
+    this.statusMessage = 'Search cleared';
+    this.renderNow();
+  },
 });
 
 document.querySelector('#app').innerHTML = `
@@ -737,6 +932,16 @@ document.querySelector('#app').innerHTML = `
             <i class="ri-layout-right-line text-base"></i>
             <span x-text="showPreviewPane ? 'Hide Right' : 'Show Right'"></span>
           </button>
+
+          <button
+            type="button"
+            class="tool-btn"
+            x-show="isSearching"
+            @click.stop="toggleSearch()"
+            title="Close search"
+          >
+            <i class="ri-close-line text-base"></i>
+          </button>
         </div>
         <div class="flex items-center gap-1">
           <button
@@ -756,40 +961,65 @@ document.querySelector('#app').innerHTML = `
           <span class="brand-dot inline-flex h-2.5 w-2.5 rounded-full"></span>
           mdit
         </div>
-        <nav class="flex items-center gap-1 text-sm">
-          <template x-for="menu in menus" :key="menu.id">
-            <div class="relative">
-              <button
-                type="button"
-                class="menu-btn"
-                @click.stop="toggleMenu(menu.id, $event)"
-                :class="openMenu === menu.id ? 'menu-btn-active' : ''"
-                x-text="menu.label"
-              ></button>
-
-              <div
-                x-show="openMenu === menu.id"
-                x-transition
-                @click.stop
-                class="menu-panel absolute top-10 z-20 w-48 max-w-[calc(100vw-1rem)] p-1 shadow-panel"
-                :class="menuPanelClass(menu.id)"
-              >
-                <template x-for="item in menu.items" :key="item.action">
-                  <div>
-                    <div x-show="item.type === 'divider'" class="my-1 border-t border-[hsl(var(--s)/0.84)]"></div>
-                    <button
-                      x-show="item.type !== 'divider'"
-                      type="button"
-                      class="menu-item"
-                      @click.stop="handleMenuAction(item.action)"
-                      x-text="menuItemLabel(item)"
-                    ></button>
-                  </div>
-                </template>
+        <div class="flex items-center gap-2">
+          <template x-if="isSearching">
+            <div class="flex items-center gap-1 bg-slate-800 px-2 py-1 rounded border border-slate-600">
+              <input
+                type="text"
+                x-ref="searchInput"
+                class="bg-transparent text-sm outline-none w-32 sm:w-48"
+                placeholder="Search..."
+                x-model="searchQuery"
+                @input.debounce.300ms="performSearch()"
+                @keydown.enter.prevent="performSearch()"
+                @keyup.enter="performSearch()"
+              />
+              <div class="flex items-center gap-1 border-l border-slate-600 pl-1">
+                <button type="button" class="p-1 hover:text-cyan-400" @click="prevMatch()" title="Previous match">
+                  <i class="ri-arrow-up-line text-sm"></i>
+                </button>
+                <button type="button" class="p-1 hover:text-cyan-400" @click="nextMatch()" title="Next match">
+                  <i class="ri-arrow-down-line text-sm"></i>
+                </button>
               </div>
+              <span class="text-[10px] font-mono text-slate-400 min-w-[3ch]" x-text="searchResultsCount > 0 ? (searchIndex + 1) + '/' + searchResultsCount : ''"></span>
             </div>
           </template>
-        </nav>
+          <nav class="flex items-center gap-1 text-sm">
+            <template x-for="menu in menus" :key="menu.id">
+              <div class="relative">
+                <button
+                  type="button"
+                  class="menu-btn"
+                  @click.stop="toggleMenu(menu.id, $event)"
+                  :class="openMenu === menu.id ? 'menu-btn-active' : ''"
+                  x-text="menu.label"
+                ></button>
+
+                <div
+                  x-show="openMenu === menu.id"
+                  x-transition
+                  @click.stop
+                  class="menu-panel absolute top-10 z-20 w-48 max-w-[calc(100vw-1rem)] p-1 shadow-panel"
+                  :class="menuPanelClass(menu.id)"
+                >
+                  <template x-for="item in menu.items" :key="item.action">
+                    <div>
+                      <div x-show="item.type === 'divider'" class="my-1 border-t border-[hsl(var(--s)/0.84)]"></div>
+                      <button
+                        x-show="item.type !== 'divider'"
+                        type="button"
+                        class="menu-item"
+                        @click.stop="handleMenuAction(item.action)"
+                        x-text="menuItemLabel(item)"
+                      ></button>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </nav>
+        </div>
       </div>
 
       <div class="tabbar flex h-10 items-end overflow-x-auto px-3 sm:px-4" @click.stop>

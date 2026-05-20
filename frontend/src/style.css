@@ -259,13 +259,26 @@
   }
 
   .markdown-preview table {
-    @apply my-4 w-full border-collapse overflow-hidden rounded-lg;
+    @apply my-4 w-full overflow-hidden rounded-lg border border-solid;
+    border-color: hsl(var(--p) / 0.28);
+    background: hsl(var(--b3) / 0.92);
   }
 
   .markdown-preview th,
   .markdown-preview td {
     @apply border px-3 py-2 text-left;
-    border-color: hsl(var(--s) / 0.84);
+    border-color: hsl(var(--s) / 0.9);
+    background: hsl(var(--b2) / 0.96);
+  }
+
+  .markdown-preview th {
+    background: hsl(var(--n) / 0.98);
+    color: hsl(var(--pc));
+    font-weight: 700;
+  }
+
+  .markdown-preview tbody tr:nth-child(even) td {
+    background: hsl(var(--b3) / 0.92);
   }
 
   .markdown-preview hr {

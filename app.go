@@ -11,24 +11,52 @@ import (
 
 // App struct
 type App struct {
-	ctx         context.Context
-	lastOpenDir string
+	ctx             context.Context
+	lastOpenDir     string
+	startupFilePath string
 }
 
 type FilePayload struct {
 	Path    string `json:"path"`
+	Title   string `json:"title"`
 	Content string `json:"content"`
 }
 
 // NewApp creates a new App application struct
-func NewApp() *App {
-	return &App{}
+func NewApp(startupFilePath string) *App {
+	return &App{startupFilePath: startupFilePath}
 }
 
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+}
+
+func (a *App) readFilePayload(path string) (*FilePayload, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	a.lastOpenDir = filepath.Dir(path)
+	return &FilePayload{Path: path, Title: filepath.Base(path), Content: string(content)}, nil
+}
+
+func (a *App) domReady(ctx context.Context) {
+	a.ctx = ctx
+	startupPath := strings.TrimSpace(a.startupFilePath)
+	if startupPath == "" || !strings.EqualFold(filepath.Ext(startupPath), ".md") {
+		return
+	}
+
+	payload, err := a.readFilePayload(startupPath)
+	if err != nil {
+		return
+	}
+
+	a.startupFilePath = ""
+	runtime.EventsEmit(a.ctx, "startup-file", payload)
 }
 
 func (a *App) OpenFile() (*FilePayload, error) {
@@ -55,12 +83,7 @@ func (a *App) OpenFile() (*FilePayload, error) {
 
 	a.lastOpenDir = filepath.Dir(path)
 
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	return &FilePayload{Path: path, Content: string(content)}, nil
+	return a.readFilePayload(path)
 }
 
 func (a *App) SaveFile(content, currentPath string) (string, error) {

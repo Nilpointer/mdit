@@ -2,6 +2,9 @@ package main
 
 import (
 	"embed"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -16,8 +19,23 @@ var assets embed.FS
 var appIcon []byte
 
 func main() {
+	startupFilePath := ""
+	for _, arg := range os.Args[1:] {
+		if strings.HasPrefix(arg, "-") {
+			continue
+		}
+		if strings.EqualFold(filepath.Ext(arg), ".md") {
+			if absPath, err := filepath.Abs(arg); err == nil {
+				startupFilePath = absPath
+			} else {
+				startupFilePath = arg
+			}
+			break
+		}
+	}
+
 	// Create an instance of the app structure
-	app := NewApp()
+	app := NewApp(startupFilePath)
 
 	// Create application with options
 	err := wails.Run(&options.App{
@@ -29,6 +47,7 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
+		OnDomReady:       app.domReady,
 		Linux: &linux.Options{
 			Icon:        appIcon,
 			ProgramName: "mdit",
