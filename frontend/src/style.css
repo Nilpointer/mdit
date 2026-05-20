@@ -287,6 +287,14 @@
     color: hsl(var(--pc));
   }
 
+  .markdown-preview .search-highlight {
+    border-radius: 0.25rem;
+    background: hsl(var(--wa) / 0.5);
+    box-shadow: 0 0 0 1px hsl(var(--wa) / 0.32);
+    color: hsl(var(--bc));
+    padding: 0 0.125rem;
+  }
+
   .markdown-preview table {
     @apply my-4 w-full overflow-hidden rounded-lg border border-solid;
     border-color: hsl(var(--p) / 0.28);

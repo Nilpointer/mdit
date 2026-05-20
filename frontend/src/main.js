@@ -48,6 +48,8 @@ const filenameFromPath = (path) => {
   return segments[segments.length - 1] || 'untitled.md';
 };
 
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const cheatSheetCloseHref = '#close-cheatsheet';
 const aboutCloseHref = '#close-about';
 let startupFilePayload = null;
@@ -201,7 +203,7 @@ window.markdownViewer = () => ({
 
     this.activeTabId = tabId;
     this.markdown = tab.markdown;
-    this.renderNow();
+    this.renderCurrentDocument();
   },
   closeTab(tabId) {
     const tab = this.tabById(tabId);
@@ -393,9 +395,24 @@ window.markdownViewer = () => ({
   isUtilityTab(tab) {
     return tab?.kind === 'cheatsheet' || tab?.kind === 'about';
   },
+  renderCurrentDocument() {
+    if (this.isSearching) {
+      this.refreshSearchResults();
+      return;
+    }
+
+    this.renderNow();
+  },
   scheduleRender() {
     window.clearTimeout(this.renderTimer);
-    this.renderTimer = window.setTimeout(() => this.renderNow(), 80);
+    this.renderTimer = window.setTimeout(() => {
+      if (this.isSearching) {
+        this.refreshSearchResults();
+        return;
+      }
+
+      this.renderNow();
+    }, 80);
   },
   recordHistoryForActive(nextValue) {
     const tab = this.activeTab();
@@ -441,7 +458,7 @@ window.markdownViewer = () => ({
       tab.isDirty = markDirty;
     }
 
-    this.renderNow();
+    this.renderCurrentDocument();
   },
   undo() {
     const tab = this.activeTab();
@@ -456,8 +473,10 @@ window.markdownViewer = () => ({
     if (tab.kind === 'file') {
       tab.isDirty = true;
     }
-    this.renderNow();
-    this.statusMessage = 'Undo';
+    this.renderCurrentDocument();
+    if (!this.isSearching) {
+      this.statusMessage = 'Undo';
+    }
   },
   redo() {
     const tab = this.activeTab();
@@ -472,8 +491,10 @@ window.markdownViewer = () => ({
     if (tab.kind === 'file') {
       tab.isDirty = true;
     }
-    this.renderNow();
-    this.statusMessage = 'Redo';
+    this.renderCurrentDocument();
+    if (!this.isSearching) {
+      this.statusMessage = 'Redo';
+    }
   },
   handleEditorInput(value) {
     const tab = this.activeTab();
@@ -537,12 +558,10 @@ window.markdownViewer = () => ({
     const rawHtml = marked.parse(this.markdown);
     let sanitizedHtml = DOMPurify.sanitize(rawHtml);
 
-    if (this.isSearching && this.searchQuery) {
-      try {
-        const regex = new RegExp(`(${this.searchQuery})`, 'gi');
-        sanitizedHtml = sanitizedHtml.replace(regex, '<mark class="bg-cyan-500/30 text-inherit rounded px-0.5">$1</mark>');
-      } catch (e) {
-        // Ignore invalid regex
+    if (this.isSearching && this.searchQuery.trim()) {
+      const regex = this.searchRegex();
+      if (regex) {
+        sanitizedHtml = sanitizedHtml.replace(regex, '<mark class="search-highlight">$&</mark>');
       }
     }
 
@@ -697,6 +716,12 @@ window.markdownViewer = () => ({
       return;
     }
 
+    if (action === 'ToggleSearch') {
+      this.toggleSearch();
+      this.closeMenu();
+      return;
+    }
+
     if (action === 'SaveFile') {
       const tab = this.activeTab();
       if (!tab || tab.kind !== 'file') {
@@ -808,85 +833,92 @@ window.markdownViewer = () => ({
     this.isSearching = !this.isSearching;
     if (!this.isSearching) {
       this.clearSearch();
-    } else {
-      this.$nextTick(() => {
-        const input = this.$refs.searchInput;
-        if (input) {
-          input.focus();
-        } else {
-          // Fallback if ref is not available yet
-          const el = document.querySelector('input[placeholder="Search..."]');
-          if (el) el.focus();
-        }
-      });
-    }
-  },
-  performSearch() {
-    const query = this.searchQuery.trim();
-    if (!query) {
-      this.clearSearch();
       return;
     }
 
-    const text = this.markdown;
-    const regex = new RegExp(query, 'gi');
-    const matches = [...text.matchAll(regex)];
+    this.focusSearchInput();
+  },
+  focusSearchInput() {
+    this.$nextTick(() => {
+      const input = this.$refs.searchInput ?? document.querySelector('[data-search-input]');
+      if (!input) {
+        return;
+      }
 
-    if (matches.length === 0) {
+      input.focus();
+      input.select();
+    });
+  },
+  searchRegex() {
+    const query = this.searchQuery.trim();
+    if (!query) {
+      return null;
+    }
+
+    return new RegExp(escapeRegExp(query), 'gi');
+  },
+  refreshSearchResults({ scrollToCurrent = false } = {}) {
+    const regex = this.searchRegex();
+    if (!this.isSearching || !regex) {
       this.searchResultsCount = 0;
       this.searchIndex = -1;
+      this.renderNow();
+      if (this.isSearching) {
+        this.statusMessage = 'Search ready';
+      }
+      return;
+    }
+
+    const matches = [...this.markdown.matchAll(regex)];
+    this.searchResultsCount = matches.length;
+    if (matches.length === 0) {
+      this.searchIndex = -1;
+      this.renderNow();
       this.statusMessage = 'No matches found';
       return;
     }
 
-    this.searchResultsCount = matches.length;
-    this.searchIndex = 0;
-    this.statusMessage = `Match 1 of ${this.searchResultsCount}`;
+    if (this.searchIndex < 0) {
+      this.searchIndex = 0;
+    } else if (this.searchIndex >= matches.length) {
+      this.searchIndex = matches.length - 1;
+    }
 
-    // Scroll to first match in preview
+    this.renderNow();
+    this.statusMessage = `Match ${this.searchIndex + 1} of ${this.searchResultsCount}`;
+    if (scrollToCurrent) {
+      this.scrollToSearchMatch();
+    }
+  },
+  scrollToSearchMatch(index = this.searchIndex) {
     this.$nextTick(() => {
       const preview = document.getElementById('preview');
-      if (preview) {
-        const firstMark = preview.querySelector('mark');
-        if (firstMark) {
-          firstMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+      const marks = preview?.querySelectorAll('.search-highlight') ?? [];
+      const target = marks[index];
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     });
   },
+  performSearch() {
+    this.searchIndex = 0;
+    this.refreshSearchResults({ scrollToCurrent: true });
+  },
   nextMatch() {
+    this.refreshSearchResults();
     if (this.searchResultsCount === 0) return;
 
     this.searchIndex = (this.searchIndex + 1) % this.searchResultsCount;
     this.statusMessage = `Match ${this.searchIndex + 1} of ${this.searchResultsCount}`;
-
-    this.$nextTick(() => {
-      const preview = document.getElementById('preview');
-      if (preview) {
-        const marks = preview.querySelectorAll('mark');
-        const target = marks[this.searchIndex];
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }
-    });
+    this.scrollToSearchMatch();
   },
   prevMatch() {
+    this.refreshSearchResults();
     if (this.searchResultsCount === 0) return;
 
     this.searchIndex = (this.searchIndex - 1 + this.searchResultsCount) % this.searchResultsCount;
     this.statusMessage = `Match ${this.searchIndex + 1} of ${this.searchResultsCount}`;
-
-    this.$nextTick(() => {
-      const preview = document.getElementById('preview');
-      if (preview) {
-        const marks = preview.querySelectorAll('mark');
-        const target = marks[this.searchIndex];
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }
-    });
+    this.scrollToSearchMatch();
   },
   clearSearch() {
     this.searchQuery = '';
@@ -963,10 +995,11 @@ document.querySelector('#app').innerHTML = `
         </div>
         <div class="flex items-center gap-2">
           <template x-if="isSearching">
-            <div class="flex items-center gap-1 bg-slate-800 px-2 py-1 rounded border border-slate-600">
+            <div class="flex items-center gap-1 bg-slate-800 px-2 py-1 rounded border border-slate-600" @click.stop>
               <input
                 type="text"
                 x-ref="searchInput"
+                data-search-input
                 class="bg-transparent text-sm outline-none w-32 sm:w-48"
                 placeholder="Search..."
                 x-model="searchQuery"
@@ -975,10 +1008,10 @@ document.querySelector('#app').innerHTML = `
                 @keyup.enter="performSearch()"
               />
               <div class="flex items-center gap-1 border-l border-slate-600 pl-1">
-                <button type="button" class="p-1 hover:text-cyan-400" @click="prevMatch()" title="Previous match">
+                <button type="button" class="p-1 hover:text-cyan-400" @click.stop="prevMatch()" title="Previous match">
                   <i class="ri-arrow-up-line text-sm"></i>
                 </button>
-                <button type="button" class="p-1 hover:text-cyan-400" @click="nextMatch()" title="Next match">
+                <button type="button" class="p-1 hover:text-cyan-400" @click.stop="nextMatch()" title="Next match">
                   <i class="ri-arrow-down-line text-sm"></i>
                 </button>
               </div>
