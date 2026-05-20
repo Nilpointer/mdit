@@ -31,6 +31,10 @@
     --control-border: hsl(var(--s) / 0.86);
     --control-text: hsl(var(--sc));
     --control-text-active: hsl(var(--pc));
+    --scrollbar-track: hsl(var(--b3) / 0.72);
+    --scrollbar-thumb: hsl(var(--s) / 0.9);
+    --scrollbar-thumb-hover: hsl(var(--p) / 0.72);
+    --scrollbar-corner: hsl(var(--b3));
   }
 
   html,
@@ -45,6 +49,31 @@
 
   * {
     box-sizing: border-box;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    scrollbar-width: thin;
+  }
+
+  *::-webkit-scrollbar {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    border: 2px solid var(--scrollbar-track);
+    border-radius: 999px;
+    background: var(--scrollbar-thumb);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: var(--scrollbar-corner);
   }
 }
 
