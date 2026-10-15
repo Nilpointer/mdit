@@ -1,0 +1,36 @@
+# Packages the prebuilt Linux binary (built by the release workflow into dist/linux/mdit).
+# The GNOME runtime provides GTK 3 and WebKitGTK 4.1, which Wails v2 links against.
+app-id: io.github.Nilpointer.mdit
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+command: mdit
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Wails uses the plain GTK file chooser, not the portal, so open/save needs direct access.
+  - --filesystem=home
+modules:
+  - name: mdit
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 mdit /app/bin/mdit
+      - install -Dm644 io.github.Nilpointer.mdit.desktop /app/share/applications/io.github.Nilpointer.mdit.desktop
+      - install -Dm644 io.github.Nilpointer.mdit.metainfo.xml /app/share/metainfo/io.github.Nilpointer.mdit.metainfo.xml
+      - install -Dm644 icon-256.png /app/share/icons/hicolor/256x256/apps/io.github.Nilpointer.mdit.png
+      - install -Dm644 icon-512.png /app/share/icons/hicolor/512x512/apps/io.github.Nilpointer.mdit.png
+    sources:
+      - type: file
+        path: ../../dist/linux/mdit
+      - type: file
+        path: ../linux/io.github.Nilpointer.mdit.desktop
+      - type: file
+        path: ../linux/io.github.Nilpointer.mdit.metainfo.xml
+      - type: file
+        path: ../linux/icons/256x256/io.github.Nilpointer.mdit.png
+        dest-filename: icon-256.png
+      - type: file
+        path: ../linux/icons/512x512/io.github.Nilpointer.mdit.png
+        dest-filename: icon-512.png

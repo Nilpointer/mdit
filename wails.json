@@ -8,6 +8,13 @@
   "frontend:dev:serverUrl": "auto",
   "author": {
     "name": "Andreas Ulrich",
-    "email": "andreas@ulrich.com.de"
+    "email": "dev@codecauldron.de"
+  },
+  "info": {
+    "companyName": "Andreas Ulrich",
+    "productName": "mdit",
+    "productVersion": "0.0.0",
+    "copyright": "Copyright © 2026 Andreas Ulrich",
+    "comments": "Markdown viewer and editor"
   }
 }

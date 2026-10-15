@@ -1,0 +1,4 @@
+#!/bin/sh
+# WebKitGTK 4.1 and GTK 3 come from the host system; they are not bundled.
+HERE="$(dirname "$(readlink -f "$0")")"
+exec "$HERE/usr/bin/mdit" "$@"

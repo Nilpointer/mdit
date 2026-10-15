@@ -323,15 +323,50 @@ wails build -clean -tags webkit2_41
 
 ## Releases
 
-GitHub Actions workflow at `.github/workflows/release.yml` builds release artifacts for:
+GitHub Actions workflow at `.github/workflows/release.yml` builds these packages and attaches them to a GitHub release, together with `SHA256SUMS.txt`:
 
-- Linux
-- Windows
-- macOS
+| Platform | File | Notes |
+|---|---|---|
+| Windows x64 | `mdit-<version>-windows-x64-setup.exe` | NSIS installer |
+| Windows x64 | `mdit-<version>-windows-x64-portable.zip` | Single `mdit.exe`, no install |
+| macOS (Intel + Apple Silicon) | `mdit-<version>-macos-universal.dmg` / `.zip` | Unsigned, see below |
+| Linux x86_64 | `mdit-<version>-x86_64.flatpak` | Self-contained, uses the GNOME 51 runtime |
+| Linux x86_64 | `mdit-<version>-x86_64.AppImage` | Needs WebKitGTK 4.1 and GTK 3 from the system |
+| Linux x86_64 | `mdit-<version>-linux-x86_64.tar.gz` | Portable binary with launcher script |
 
-Trigger a release by pushing a version tag:
+Trigger a release by pushing a version tag. The tag (without the leading `v`) becomes the app version on Windows and macOS:
 
 ```bash
 git tag v0.1.0
 git push origin v0.1.0
 ```
+
+Running the workflow manually (`workflow_dispatch`) builds all packages as workflow artifacts named `dev` without publishing a release.
+
+### Installing the packages
+
+Flatpak (installs for the current user; the GNOME 51 runtime is pulled from Flathub if missing):
+
+```bash
+flatpak install --user mdit-0.1.0-x86_64.flatpak
+flatpak run io.github.Nilpointer.mdit
+```
+
+The Flatpak has access to your home folder, because Wails uses the GTK file chooser directly rather than the desktop portal.
+
+AppImage (WebKitGTK is not bundled; install `webkit2gtk4.1` on Fedora or `libwebkit2gtk-4.1-0` on Debian/Ubuntu):
+
+```bash
+chmod +x mdit-0.1.0-x86_64.AppImage
+./mdit-0.1.0-x86_64.AppImage
+```
+
+macOS builds are not signed or notarized. After copying `mdit.app` to Applications, remove the quarantine flag once:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/mdit.app
+```
+
+Windows builds are not code-signed, so SmartScreen may warn on first launch ("More info" → "Run anyway").
+
+Linux packaging files (desktop entry, AppStream metadata, icons, Flatpak manifest, AppImage launcher) live in `packaging/`.

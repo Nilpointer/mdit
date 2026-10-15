@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=mdit
+GenericName=Markdown Editor
+Comment=Markdown viewer and editor with live preview
+Exec=mdit %f
+Icon=io.github.Nilpointer.mdit
+Terminal=false
+Categories=Utility;TextEditor;
+Keywords=markdown;editor;viewer;notes;
+StartupNotify=true
+StartupWMClass=mdit
