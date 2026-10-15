@@ -24,14 +24,14 @@ There are currently no `_test.go` files and no lint config. To verify frontend c
 ## Architecture
 
 **Backend (package `main`, two files):**
-- `main.go` embeds `frontend/dist` (so the frontend must be built before `go build`) and `build/appicon.png`. It scans CLI args for the first `.md` path and passes it to `NewApp` as the startup file. It binds `App` to the frontend.
-- `app.go` defines `App`, which exposes `OpenFile()` and `SaveFile(content, currentPath)` to JS. `OpenFile` returns `nil, nil` on cancel. `SaveFile` returns `""` on cancel, only shows a dialog when `currentPath` is empty, and appends `.md` when the path has no extension. `lastOpenDir` remembers the last dialog directory.
-- Startup file flow: `domReady` reads the CLI-provided file and emits a `startup-file` Wails event with a `FilePayload`. The frontend's `ensureStartupFileListener` in `main.js` buffers the payload until the Alpine component's handler is registered. This handles the race between the event and Alpine init.
+- `main.go` embeds `frontend/dist` (so the frontend must be built before `go build`) and `build/appicon.png`. It scans CLI args for the first `.md`/`.markdown` path (made absolute) and passes it to `NewApp` as the startup file. It binds `App` to the frontend.
+- `app.go` defines `App`, which exposes `OpenFile()`, `SaveFile(content, currentPath)` and `GetStartupFile()` to JS. `OpenFile` returns `nil, nil` on cancel. `SaveFile` returns `""` on cancel, only shows a dialog when `currentPath` is empty, and appends `.md` when the path has no extension. `lastOpenDir` remembers the last dialog directory.
+- Startup file flow is pull-based: the frontend's `openStartupFile()` (called from Alpine `init`) calls `GetStartupFile()`, which returns the CLI file once and then clears it. Don't switch back to emitting an event on DOM ready; the frontend isn't listening yet at that point and the file gets lost. A missing/unreadable file is reported as an error and shown in a toast.
 
 **Frontend (`frontend/src/main.js`, a single file):**
 - Holds all UI state and behavior in one Alpine component, `window.markdownViewer`: tabs, per-tab undo history, command palette, view mode (`editor`/`split`/`preview`), outline, find, and scroll sync. There is no menu bar; every action is a palette command (the `commands` getter) and most have a shortcut in `handleGlobalKeydown`.
 - The entire HTML template is a template string assigned to `#app.innerHTML` at the bottom of the file. Alpine is started after that.
-- The backend is reached through `window.go.main.App` via the `backendApp()` helper. Runtime APIs (`EventsOn`, `BrowserOpenURL`, `Quit`) come from the generated `frontend/wailsjs/runtime`.
+- The backend is reached through `window.go.main.App` via the `backendApp()` helper. Runtime APIs (`BrowserOpenURL`, `ClipboardSetText`, `Quit`) come from the generated `frontend/wailsjs/runtime`.
 - There are two kinds of tabs: file tabs (can be dirty, can be saved) and utility tabs (the cheat sheet and about tab, loaded with `?raw` from `src/assets/markdown/*.md`). Utility tabs are preview-only; "Edit a copy" turns one into a new file tab. They close through special preview links (`#close-cheatsheet`, `#close-about`), which `handlePreviewClick` intercepts. Other links open in the system browser.
 - A file tab is dirty when `markdown !== savedMarkdown` (see `updateDirty`), so undoing back to the saved text makes it clean again.
 - The outline comes from `marked.lexer` top-level h1–h3 tokens; each item's source line is computed from token `raw` text, and its index matches `:scope > h1, h2, h3` in the preview. Outline jumps pause scroll sync (`syncOrigin = 'outline'`) while both panes scroll.

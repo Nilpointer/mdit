@@ -24,7 +24,7 @@ func main() {
 		if strings.HasPrefix(arg, "-") {
 			continue
 		}
-		if strings.EqualFold(filepath.Ext(arg), ".md") {
+		if isMarkdownPath(arg) {
 			if absPath, err := filepath.Abs(arg); err == nil {
 				startupFilePath = absPath
 			} else {
@@ -47,7 +47,6 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
-		OnDomReady:       app.domReady,
 		Linux: &linux.Options{
 			Icon:        appIcon,
 			ProgramName: "mdit",

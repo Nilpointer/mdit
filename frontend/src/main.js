@@ -13,7 +13,7 @@ import 'remixicon/fonts/remixicon.css';
 import cheatSheetMarkdown from './assets/markdown/cheatsheet.md?raw';
 import aboutMarkdown from './assets/markdown/about.md?raw';
 
-import { BrowserOpenURL, ClipboardSetText, EventsOn, Quit } from '../wailsjs/runtime/runtime';
+import { BrowserOpenURL, ClipboardSetText, Quit } from '../wailsjs/runtime/runtime';
 
 const initialMarkdown = `# mdit Markdown Viewer
 
@@ -132,27 +132,6 @@ const measureOffsetTop = (textarea, offset) => {
   return top;
 };
 
-let startupFilePayload = null;
-let startupFileHandler = null;
-let startupFileListenerReady = false;
-
-const ensureStartupFileListener = () => {
-  if (startupFileListenerReady || !window.runtime) {
-    return;
-  }
-
-  EventsOn('startup-file', (payload) => {
-    if (startupFileHandler) {
-      startupFileHandler(payload);
-      return;
-    }
-
-    startupFilePayload = payload;
-  });
-
-  startupFileListenerReady = true;
-};
-
 window.markdownViewer = () => {
   const prefs = loadPrefs();
 
@@ -190,27 +169,29 @@ window.markdownViewer = () => {
         this.$watch(key, () => this.persistPrefs());
       }
 
-      ensureStartupFileListener();
-
       const defaultTab = this.createTab({
         markdown: initialMarkdown,
         title: 'untitled.md',
         kind: 'file',
         focus: false,
       });
-
-      startupFileHandler = (payload) => {
-        this.openFilePayload(payload, { closeCleanDefaultTab: true });
-      };
-
-      if (startupFilePayload) {
-        const payload = startupFilePayload;
-        startupFilePayload = null;
-        this.openFilePayload(payload, { closeCleanDefaultTab: true });
+      this.setActiveTab(defaultTab.id);
+      this.openStartupFile();
+    },
+    async openStartupFile() {
+      const app = backendApp();
+      if (!app?.GetStartupFile) {
         return;
       }
 
-      this.setActiveTab(defaultTab.id);
+      try {
+        const payload = await app.GetStartupFile();
+        if (payload) {
+          this.openFilePayload(payload, { closeCleanDefaultTab: true });
+        }
+      } catch (error) {
+        this.notify(`Could not open startup file: ${error?.message ?? error}`);
+      }
     },
     persistPrefs() {
       savePrefs({ view: this.view, sidebarOpen: this.sidebarOpen, theme: this.theme, wordWrap: this.wordWrap });
@@ -1188,11 +1169,11 @@ document.querySelector('#app').innerHTML = `
             <template x-if="activeDirectory()">
               <span class="flex min-w-0 items-center gap-1.5" :title="activeTab()?.filePath">
                 <i class="ri-folder-3-line"></i>
-                <span class="truncate [direction:rtl]" x-text="activeDirectory()"></span>
+                <span class="truncate [direction:rtl]"><bdi x-text="activeDirectory()"></bdi></span>
                 <i class="ri-arrow-right-s-line text-muted/60"></i>
               </span>
             </template>
-            <span class="truncate font-medium text-fg" x-text="activeTab()?.title"></span>
+            <span class="max-w-72 shrink-0 truncate font-medium text-fg" x-text="activeTab()?.title"></span>
           </div>
           <span
             x-show="!isUtility"

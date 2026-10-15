@@ -43,20 +43,23 @@ func (a *App) readFilePayload(path string) (*FilePayload, error) {
 	return &FilePayload{Path: path, Title: filepath.Base(path), Content: string(content)}, nil
 }
 
-func (a *App) domReady(ctx context.Context) {
-	a.ctx = ctx
+// isMarkdownPath reports whether path has a Markdown file extension.
+func isMarkdownPath(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".md" || ext == ".markdown"
+}
+
+// GetStartupFile returns the Markdown file passed on the command line, once.
+// The frontend pulls it after it is ready, so the file cannot be lost to a startup race.
+// It returns nil, nil when no file was passed or it was already handed out.
+func (a *App) GetStartupFile() (*FilePayload, error) {
 	startupPath := strings.TrimSpace(a.startupFilePath)
-	if startupPath == "" || !strings.EqualFold(filepath.Ext(startupPath), ".md") {
-		return
-	}
-
-	payload, err := a.readFilePayload(startupPath)
-	if err != nil {
-		return
-	}
-
 	a.startupFilePath = ""
-	runtime.EventsEmit(a.ctx, "startup-file", payload)
+	if startupPath == "" || !isMarkdownPath(startupPath) {
+		return nil, nil
+	}
+
+	return a.readFilePayload(startupPath)
 }
 
 func (a *App) OpenFile() (*FilePayload, error) {
