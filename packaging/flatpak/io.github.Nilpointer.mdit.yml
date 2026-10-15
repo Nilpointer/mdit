@@ -12,6 +12,8 @@ finish-args:
   - --device=dri
   # Wails uses the plain GTK file chooser, not the portal, so open/save needs direct access.
   - --filesystem=home
+  # Single-instance lock: Wails registers this D-Bus name (derived from instanceID in instance_id.go).
+  - --own-name=org.wails_app_io_github_Nilpointer_mdit.SingleInstance
 modules:
   - name: mdit
     buildsystem: simple

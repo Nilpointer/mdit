@@ -39,6 +39,7 @@ Repository guidance for agentic coding in `mdit`.
 - Run one test function in one package: `mise exec -- go test ./somepkg -run '^TestName$'`
 - Run verbose tests: `mise exec -- go test -v ./...`
 - Build the desktop app: `mise exec -- wails build`
+- `go vet` and `go test` compile the WebKit bindings: on WebKitGTK 4.1 systems (current Fedora/Ubuntu) add `-tags webkit2_41`, e.g. `mise exec -- go test -tags webkit2_41 ./...`
 
 ## Frontend Tooling
 

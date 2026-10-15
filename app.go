@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -54,6 +55,34 @@ func isMarkdownPath(path string) bool {
 	return ext == ".md" || ext == ".markdown"
 }
 
+// markdownPathFromArgs returns the first Markdown file argument as an absolute path.
+// Relative paths are resolved against dir, the working directory of the launch that passed them.
+func markdownPathFromArgs(args []string, dir string) string {
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") || !isMarkdownPath(arg) {
+			continue
+		}
+		if !filepath.IsAbs(arg) && dir != "" {
+			arg = filepath.Join(dir, arg)
+		}
+		if absPath, err := filepath.Abs(arg); err == nil {
+			return absPath
+		}
+		return arg
+	}
+	return ""
+}
+
+// onSecondInstanceLaunch runs in the first instance when mdit is started again.
+// A Markdown file passed to the new launch opens as a tab here, and this window comes to the front.
+func (a *App) onSecondInstanceLaunch(data options.SecondInstanceData) {
+	if path := markdownPathFromArgs(data.Args, data.WorkingDirectory); path != "" {
+		a.openFileFromOS(path)
+	}
+	runtime.WindowUnminimise(a.ctx)
+	runtime.Show(a.ctx)
+}
+
 // GetStartupFile returns the Markdown file passed on the command line, once.
 // The frontend pulls it after it is ready, so the file cannot be lost to a startup race.
 // It returns nil, nil when no file was passed or it was already handed out.
@@ -71,8 +100,9 @@ func (a *App) GetStartupFile() (*FilePayload, error) {
 	return a.readFilePayload(startupPath)
 }
 
-// openFileFromOS handles files the OS asks the running app to open (macOS Finder double-click
-// or "Open With"; macOS does not pass these as command-line arguments).
+// openFileFromOS handles files handed to the running app: macOS Finder double-click or
+// "Open With" (macOS does not pass these as command-line arguments), and files passed to a
+// second launch on any platform (see onSecondInstanceLaunch).
 // Until the frontend has pulled the startup file, the path becomes the startup file.
 // After that it is sent to the frontend as an "open-file" event and opens in a new tab.
 func (a *App) openFileFromOS(path string) {
