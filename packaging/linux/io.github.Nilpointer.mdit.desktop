@@ -8,5 +8,6 @@ Icon=io.github.Nilpointer.mdit
 Terminal=false
 Categories=Utility;TextEditor;
 Keywords=markdown;editor;viewer;notes;
+MimeType=text/markdown;text/x-markdown;
 StartupNotify=true
 StartupWMClass=mdit

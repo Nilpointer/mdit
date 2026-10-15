@@ -369,4 +369,8 @@ xattr -dr com.apple.quarantine /Applications/mdit.app
 
 Windows builds are not code-signed, so SmartScreen may warn on first launch ("More info" → "Run anyway").
 
+The Flatpak registers mdit for Markdown files (`text/markdown`), so it shows up under "Open with" in file managers. The AppImage carries the same desktop entry; it is registered when you integrate the AppImage (for example with Gear Lever or AppImageLauncher).
+
+You can also open a file directly from a terminal: `mdit notes.md` (`.md` and `.markdown` are accepted).
+
 Linux packaging files (desktop entry, AppStream metadata, icons, Flatpak manifest, AppImage launcher) live in `packaging/`.

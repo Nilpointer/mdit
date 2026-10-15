@@ -22,5 +22,9 @@
   <launchable type="desktop-id">io.github.Nilpointer.mdit.desktop</launchable>
   <url type="homepage">https://github.com/Nilpointer/mdit</url>
   <url type="bugtracker">https://github.com/Nilpointer/mdit/issues</url>
+  <provides>
+    <mediatype>text/markdown</mediatype>
+    <mediatype>text/x-markdown</mediatype>
+  </provides>
   <content_rating type="oars-1.1"/>
 </component>
