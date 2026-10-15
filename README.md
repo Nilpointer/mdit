@@ -17,19 +17,22 @@ It provides a split-pane workspace:
 
 - Live Markdown rendering with `marked`
 - Sanitized preview HTML with `DOMPurify`
-- Top menu bar with file/edit/view/help menus
+- Command palette (`Ctrl K`) for every action, plus keyboard shortcuts
 - Open and save Markdown files through native dialogs
-- Tabbed Markdown workspace
-- Undo/redo history in the editor
-- View menu toggles to show/hide source or preview pane
-- Integrated Markdown cheat sheet and about tab
+- Tabbed Markdown workspace with unsaved-change indicators
+- Undo/redo history in the editor, formatting toolbar, line numbers and optional word wrap (`Alt Z`)
+- Editor / Split / Preview view modes (`Ctrl E`)
+- Sidebar with open documents and a heading outline that jumps both panes
+- Find in preview with match highlighting (`Ctrl F`)
+- Light and dark themes; view, sidebar, theme and wrap preferences are remembered
+- Integrated Markdown cheat sheet and about tab (read-only, with "Edit a copy")
 - External link opening through Wails browser integration
-- Responsive split layout for narrower windows
+- Responsive layout for narrower windows
 
 ## Tech Stack
 
-- Backend: Go 1.23 + Wails v2
-- Frontend: Vanilla JavaScript + Alpine.js + TailwindCSS + Vite
+- Backend: Go 1.27 + Wails v2
+- Frontend: Vanilla JavaScript + Alpine.js + Tailwind CSS v4 + Vite
 - Markdown: `marked`
 - HTML sanitization: `DOMPurify`
 - Icons: Remix Icon
@@ -61,15 +64,14 @@ Notes:
 
 Install the following before building or running the app:
 
-- Go compatible with `go.mod` currently Go 1.23
+- [mise](https://mise.jdx.dev/), which installs the pinned Go toolchain and Wails CLI from `mise.toml`
 - Node.js and npm
-- Wails CLI v2
 - Platform-specific native dependencies required by Wails
 
-Install Wails CLI:
+Install Go and the Wails CLI:
 
 ```bash
-go install github.com/wailsapp/wails/v2/cmd/wails@latest
+mise install
 ```
 
 Check your local Wails environment:
@@ -236,7 +238,7 @@ go test ./...
 Preferred pinned Go toolchain for this repository:
 
 ```bash
-mise exec go@1.23.12 -- go test ./...
+mise exec -- go test ./...
 ```
 
 Run frontend build validation:

@@ -15,7 +15,7 @@ Repository guidance for agentic coding in `mdit`.
 
 - `README.md` explains the app and user-facing workflows.
 - `Makefile` is the quickest way to run common tasks.
-- `go.mod` pins Go 1.23.
+- `mise.toml` pins the Go toolchain and Wails CLI; `go.mod` declares Go 1.27.2.
 - `frontend/package.json` defines the frontend build scripts.
 
 ## Common Commands
@@ -31,14 +31,14 @@ Repository guidance for agentic coding in `mdit`.
 
 ## Go Tooling
 
-- Preferred Go toolchain in this repo: `mise exec go@1.23.12 -- ...`
-- Format Go files: `mise exec go@1.23.12 -- gofmt -w <files>`
-- Run all Go tests: `mise exec go@1.23.12 -- go test ./...`
-- Run one package: `mise exec go@1.23.12 -- go test ./path/to/package`
-- Run one test function in all packages: `mise exec go@1.23.12 -- go test ./... -run '^TestName$'`
-- Run one test function in one package: `mise exec go@1.23.12 -- go test ./somepkg -run '^TestName$'`
-- Run verbose tests: `mise exec go@1.23.12 -- go test -v ./...`
-- Build the desktop app: `mise exec go@1.23.12 -- wails build`
+- Go and the Wails CLI are managed by mise (`mise.toml`); run `mise install` once, then use `mise exec -- ...`
+- Format Go files: `mise exec -- gofmt -w <files>`
+- Run all Go tests: `mise exec -- go test ./...`
+- Run one package: `mise exec -- go test ./path/to/package`
+- Run one test function in all packages: `mise exec -- go test ./... -run '^TestName$'`
+- Run one test function in one package: `mise exec -- go test ./somepkg -run '^TestName$'`
+- Run verbose tests: `mise exec -- go test -v ./...`
+- Build the desktop app: `mise exec -- wails build`
 
 ## Frontend Tooling
 
@@ -50,9 +50,9 @@ Repository guidance for agentic coding in `mdit`.
 ## Verification Expectations
 
 - Run `gofmt` on every touched Go file.
-- Run `mise exec go@1.23.12 -- go test ./...` after backend changes.
+- Run `mise exec -- go test ./...` after backend changes.
 - Run `npm --prefix frontend run build` after frontend changes.
-- Run `mise exec go@1.23.12 -- wails build` when the packaged app or embedded assets change.
+- Run `mise exec -- wails build` when the packaged app or embedded assets change.
 - Manually check file open/save, cancel, and preview behavior when file handling changes.
 
 ## Go Style

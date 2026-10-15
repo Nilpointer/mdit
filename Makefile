@@ -1,8 +1,4 @@
-WAILS ?= $(shell command -v wails 2>/dev/null)
-
-ifeq ($(WAILS),)
-WAILS := /home/andreas/.local/share/mise/installs/go/1.26.0/bin/wails
-endif
+WAILS ?= mise exec -- wails
 
 .PHONY: help dev build frontend-build clean
 

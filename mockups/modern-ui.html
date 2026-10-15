@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mdit Modern UI</title>
+
+  <!-- Same stack as the app: Tailwind v4, Alpine.js, marked, DOMPurify, Remix Icon (CDN builds for a standalone mockup) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+
+  <style>
+    [x-cloak] { display: none !important; }
+
+    :root {
+      --bg: #0b1120;
+      --surface: #0f172a;
+      --elevated: #1e293b;
+      --line: rgb(148 163 184 / 0.14);
+      --fg: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #22d3ee;
+      --accent-ink: #083344;
+      --code-bg: #0b1220;
+      --gutter: #475569;
+      color-scheme: dark;
+    }
+
+    :root[data-theme='light'] {
+      --bg: #eef2f6;
+      --surface: #ffffff;
+      --elevated: #f1f5f9;
+      --line: rgb(15 23 42 / 0.09);
+      --fg: #0f172a;
+      --muted: #64748b;
+      --accent: #0891b2;
+      --accent-ink: #ecfeff;
+      --code-bg: #f8fafc;
+      --gutter: #94a3b8;
+      color-scheme: light;
+    }
+
+    html, body { height: 100%; margin: 0; background: var(--bg); }
+
+    * { scrollbar-width: thin; scrollbar-color: color-mix(in oklab, var(--muted) 35%, transparent) transparent; }
+
+    ::highlight(find) { background-color: rgb(251 191 36 / 0.35); }
+    ::highlight(find-current) { background-color: #f59e0b; color: #0b1120; }
+
+    /* Rendered Markdown typography */
+    .md-preview { color: var(--fg); font-size: 15px; line-height: 1.75; }
+    .md-preview > :first-child { margin-top: 0; }
+    .md-preview h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.2; margin: 0 0 1rem; }
+    .md-preview h2 { font-size: 1.35rem; font-weight: 600; letter-spacing: -0.02em; margin: 2.25rem 0 0.75rem; padding-bottom: 0.45rem; border-bottom: 1px solid var(--line); }
+    .md-preview h3 { font-size: 1.05rem; font-weight: 600; margin: 1.75rem 0 0.5rem; }
+    .md-preview p { margin: 0.85rem 0; color: color-mix(in oklab, var(--fg) 86%, transparent); }
+    .md-preview strong { color: var(--fg); font-weight: 600; }
+    .md-preview a { color: var(--accent); text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--accent) 40%, transparent); text-underline-offset: 3px; }
+    .md-preview a:hover { text-decoration-color: var(--accent); }
+    .md-preview ul, .md-preview ol { margin: 0.85rem 0; padding-left: 1.4rem; }
+    .md-preview ul { list-style: disc; }
+    .md-preview ol { list-style: decimal; }
+    .md-preview li { margin: 0.3rem 0; }
+    .md-preview li::marker { color: var(--muted); }
+    .md-preview li:has(> input[type='checkbox']) { list-style: none; margin-left: -1.4rem; }
+    .md-preview input[type='checkbox'] { accent-color: var(--accent); margin-right: 0.55rem; transform: translateY(1px); }
+    .md-preview code { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 0.84em; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 0.12em 0.38em; }
+    .md-preview pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.15rem; margin: 1.25rem 0; overflow-x: auto; font-size: 13px; line-height: 1.65; }
+    .md-preview pre code { background: none; border: 0; padding: 0; font-size: inherit; }
+    .md-preview blockquote { margin: 1.25rem 0; padding: 0.7rem 1rem; border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0; background: color-mix(in oklab, var(--accent) 8%, transparent); color: var(--muted); }
+    .md-preview blockquote p { margin: 0; color: inherit; }
+    .md-preview table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 1.25rem 0; font-size: 14px; }
+    .md-preview th { text-align: left; font-weight: 600; background: var(--elevated); }
+    .md-preview th, .md-preview td { padding: 0.55rem 0.85rem; border-bottom: 1px solid var(--line); }
+    .md-preview tr:last-child td { border-bottom: 0; }
+    .md-preview hr { border: 0; border-top: 1px solid var(--line); margin: 2rem 0; }
+  </style>
+
+  <style type="text/tailwindcss">
+    @theme inline {
+      --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+      --color-bg: var(--bg);
+      --color-surface: var(--surface);
+      --color-elevated: var(--elevated);
+      --color-line: var(--line);
+      --color-fg: var(--fg);
+      --color-muted: var(--muted);
+      --color-accent: var(--accent);
+      --color-accent-ink: var(--accent-ink);
+      --color-gutter: var(--gutter);
+    }
+
+    @layer components {
+      .icon-btn {
+        @apply grid size-8 shrink-0 cursor-pointer place-items-center rounded-lg text-[17px] text-muted transition hover:bg-fg/8 hover:text-fg;
+      }
+      .icon-btn-sm {
+        @apply grid size-7 shrink-0 cursor-pointer place-items-center rounded-md text-[15px] text-muted transition hover:bg-fg/8 hover:text-fg;
+      }
+      .kbd {
+        @apply rounded-md border border-line bg-elevated px-1.5 py-px font-mono text-[10.5px] text-muted;
+      }
+      .section-label {
+        @apply px-3 pb-1.5 pt-4 text-[11px] font-semibold uppercase tracking-wider text-muted/80;
+      }
+      .side-item {
+        @apply flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-[13px] text-muted transition hover:bg-fg/6 hover:text-fg;
+      }
+      .pane {
+        @apply relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_1px_2px_rgb(0_0_0/0.12),0_12px_32px_-16px_rgb(0_0_0/0.35)];
+      }
+      .pane-head {
+        @apply flex h-11 shrink-0 items-center gap-2 border-b border-line px-3;
+      }
+      .pane-toggle {
+        @apply flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-line px-2 text-[12px] font-medium text-muted transition hover:border-accent/50 hover:bg-accent/10 hover:text-accent;
+      }
+    }
+  </style>
+
+  <script type="text/markdown" id="doc-roadmap"># Product Roadmap
+
+A living plan for **mdit 2.0**: a calmer, faster Markdown workspace.
+
+> Ship small, ship often. Every release should feel lighter than the last.
+
+## Q4 Goals
+
+- [x] Upgrade to Go 1.27 and Wails 2.16
+- [x] Migrate styles to Tailwind CSS v4
+- [ ] Command palette and keyboard-first workflows
+- [ ] Document outline in the sidebar
+
+## Release Plan
+
+| Milestone | Scope | Status |
+|---|---|---|
+| 2.0 alpha | New shell, command palette | In progress |
+| 2.0 beta | Outline, find & replace | Planned |
+| 2.0 | Polish, packaging | Planned |
+
+## Implementation Notes
+
+Startup files should be pulled by the frontend instead of pushed:
+
+```go
+func (a *App) GetStartupFile() (*FilePayload, error) {
+    if a.startupFilePath == "" {
+        return nil, nil
+    }
+    return a.readFilePayload(a.startupFilePath)
+}
+```
+
+### Open Questions
+
+1. Should the outline follow the cursor?
+2. Do we need a distraction-free *focus mode*?
+
+---
+
+Read more in the [Wails documentation](https://wails.io/docs/).
+</script>
+
+  <script type="text/markdown" id="doc-notes"># Meeting Notes
+
+## 2026-10-14 · Design Sync
+
+- Unify title bar, tabs and actions in one row
+- Replace the menu bar with a **command palette** (`Ctrl K`)
+- Keep the slate & cyan palette, add a light theme
+
+## Follow-ups
+
+- [ ] Prototype the outline sidebar
+- [ ] Measure preview render time on large files
+</script>
+
+  <script type="text/markdown" id="doc-cheatsheet"># Markdown Cheat Sheet
+
+## Text
+
+**Bold**, *italic*, ~~strikethrough~~ and `inline code`.
+
+## Lists
+
+- Bullet item
+1. Numbered item
+- [ ] Task item
+
+## Links & Code
+
+[Link text](https://example.com)
+
+```js
+const greet = (name) => `Hello ${name}`
+```
+
+## Tables
+
+| Syntax | Result |
+|---|---|
+| `# H1` | Heading |
+| `> quote` | Blockquote |
+</script>
+
+  <script type="text/markdown" id="doc-about"># About mdit
+
+mdit is a desktop Markdown editor built with **Go + Wails**.
+
+This mockup explores a refreshed shell:
+
+- Unified title bar with inline tabs
+- Command palette and keyboard-first actions
+- Sidebar with open documents and a live outline
+- Editor / Split / Preview view modes
+- Light and dark themes
+</script>
+
+  <script>
+    const docText = (id) => document.getElementById(`doc-${id}`).textContent
+
+    const makeTab = (id, title, kind, path, markdown, saved = markdown) => ({ id, title, kind, path, markdown, saved })
+
+    const utilityDocs = {
+      cheatsheet: { title: 'Cheat Sheet', icon: 'ri-book-2-line' },
+      about: { title: 'About', icon: 'ri-information-line' },
+    }
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('mockup', () => ({
+        tabs: [
+          makeTab('roadmap', 'roadmap.md', 'file', '~/notes/mdit', docText('roadmap')),
+          makeTab('notes', 'meeting-notes.md', 'file', '~/notes/meetings', docText('notes'), ''),
+          makeTab('cheatsheet', 'Cheat Sheet', 'utility', '', docText('cheatsheet')),
+        ],
+        activeId: 'roadmap',
+        view: 'split',
+        sidebarOpen: window.innerWidth >= 1024,
+        theme: 'dark',
+        paletteOpen: false,
+        paletteQuery: '',
+        paletteIndex: 0,
+        palettePointer: '',
+        findOpen: false,
+        findQuery: '',
+        findCount: 0,
+        findIndex: 0,
+        cursor: { line: 1, col: 1 },
+        toast: '',
+        toastTimer: null,
+        untitledCount: 0,
+        syncPaused: false,
+        syncPauseTimer: null,
+
+        get active() {
+          return this.tabs.find((tab) => tab.id === this.activeId)
+        },
+        get isUtility() {
+          return this.active?.kind === 'utility'
+        },
+        get showEditor() {
+          return !this.isUtility && this.view !== 'preview'
+        },
+        get showPreview() {
+          return this.isUtility || this.view !== 'editor'
+        },
+        get html() {
+          return DOMPurify.sanitize(marked.parse(this.active?.markdown ?? ''))
+        },
+        get lineCount() {
+          return (this.active?.markdown ?? '').split('\n').length
+        },
+        get wordCount() {
+          return (this.active?.markdown ?? '').split(/\s+/).filter(Boolean).length
+        },
+        get readMinutes() {
+          return Math.max(1, Math.round(this.wordCount / 200))
+        },
+        get outline() {
+          const items = []
+          let line = 1
+          for (const token of marked.lexer(this.active?.markdown ?? '')) {
+            if (token.type === 'heading' && token.depth <= 3) {
+              items.push({ depth: token.depth, text: token.text.replace(/[*_`]/g, ''), line })
+            }
+            line += (token.raw.match(/\n/g) ?? []).length
+          }
+          return items
+        },
+        get commands() {
+          return [
+            { label: 'New document', icon: 'ri-file-add-line', keys: 'Ctrl N', run: () => this.newTab() },
+            { label: 'Open file…', icon: 'ri-folder-open-line', keys: 'Ctrl O', run: () => this.notify('Native open dialog would appear here') },
+            { label: 'Save', icon: 'ri-save-3-line', keys: 'Ctrl S', run: () => this.save() },
+            { label: 'Find in document', icon: 'ri-search-line', keys: 'Ctrl F', run: () => this.openFind() },
+            { label: 'Toggle sidebar', icon: 'ri-side-bar-line', keys: 'Ctrl B', run: () => { this.sidebarOpen = !this.sidebarOpen } },
+            { label: 'Cycle view mode', icon: 'ri-loop-right-line', keys: 'Ctrl E', run: () => this.cycleView() },
+            { label: 'View: Editor only', icon: 'ri-code-s-slash-line', keys: '', run: () => { this.view = 'editor' } },
+            { label: 'View: Split', icon: 'ri-layout-column-line', keys: '', run: () => { this.view = 'split' } },
+            { label: 'View: Preview only', icon: 'ri-eye-line', keys: '', run: () => { this.view = 'preview' } },
+            { label: 'Toggle light / dark theme', icon: 'ri-contrast-2-line', keys: '', run: () => this.toggleTheme() },
+            { label: 'Markdown cheat sheet', icon: 'ri-book-2-line', keys: 'F1', run: () => this.openUtility('cheatsheet') },
+            { label: 'About mdit', icon: 'ri-information-line', keys: '', run: () => this.openUtility('about') },
+          ]
+        },
+        viewModes: [
+          { id: 'editor', icon: 'ri-code-s-slash-line', label: 'Editor' },
+          { id: 'split', icon: 'ri-layout-column-line', label: 'Split' },
+          { id: 'preview', icon: 'ri-eye-line', label: 'Preview' },
+        ],
+        get filteredCommands() {
+          const query = this.paletteQuery.trim().toLowerCase()
+          if (!query) {
+            return this.commands
+          }
+          return this.commands.filter((command) => command.label.toLowerCase().includes(query))
+        },
+
+        isDirty(tab) {
+          return tab.kind === 'file' && tab.markdown !== tab.saved
+        },
+        tabIcon(tab) {
+          return tab.kind === 'utility' ? utilityDocs[tab.id]?.icon ?? 'ri-book-2-line' : 'ri-markdown-line'
+        },
+
+        activate(tabId) {
+          this.activeId = tabId
+          this.cursor = { line: 1, col: 1 }
+          if (window.innerWidth < 1024) {
+            this.sidebarOpen = false
+          }
+        },
+        newTab() {
+          this.untitledCount += 1
+          const id = `untitled-${this.untitledCount}`
+          this.tabs.push(makeTab(id, `untitled-${this.untitledCount}.md`, 'file', '', '# Untitled\n\n', ''))
+          this.activate(id)
+          this.$nextTick(() => this.$refs.editor?.focus())
+        },
+        openUtility(kind) {
+          if (!this.tabs.some((tab) => tab.id === kind)) {
+            this.tabs.push(makeTab(kind, utilityDocs[kind].title, 'utility', '', docText(kind)))
+          }
+          this.activate(kind)
+        },
+        editCopy() {
+          const source = this.active
+          if (!source) {
+            return
+          }
+          this.untitledCount += 1
+          const id = `untitled-${this.untitledCount}`
+          const title = `${source.title.toLowerCase().replace(/\s+/g, '-')}-copy.md`
+          this.tabs.push(makeTab(id, title, 'file', '', source.markdown, ''))
+          this.view = 'split'
+          this.activate(id)
+        },
+        cycleView() {
+          if (this.isUtility) {
+            this.notify('Read-only document: use “Edit a copy” to see its source')
+            return
+          }
+          const order = this.viewModes.map((mode) => mode.id)
+          this.view = order[(order.indexOf(this.view) + 1) % order.length]
+        },
+        closeTab(tabId) {
+          const index = this.tabs.findIndex((tab) => tab.id === tabId)
+          const tab = this.tabs[index]
+          if (!tab) {
+            return
+          }
+          if (this.isDirty(tab) && !window.confirm(`Close ${tab.title}? Unsaved changes will be lost.`)) {
+            return
+          }
+          this.tabs.splice(index, 1)
+          if (this.tabs.length === 0) {
+            this.newTab()
+            return
+          }
+          if (this.activeId === tabId) {
+            this.activate(this.tabs[Math.max(0, index - 1)].id)
+          }
+        },
+        save() {
+          const tab = this.active
+          if (!tab || tab.kind !== 'file') {
+            return
+          }
+          if (!tab.path) {
+            tab.path = '~/Documents'
+          }
+          tab.saved = tab.markdown
+          this.notify(`Saved ${tab.title}`)
+        },
+
+        toggleTheme() {
+          this.theme = this.theme === 'dark' ? 'light' : 'dark'
+          document.documentElement.dataset.theme = this.theme
+        },
+        notify(message) {
+          this.toast = message
+          window.clearTimeout(this.toastTimer)
+          this.toastTimer = window.setTimeout(() => { this.toast = '' }, 2200)
+        },
+
+        openPalette() {
+          this.paletteOpen = true
+          this.paletteQuery = ''
+          this.paletteIndex = 0
+          this.$nextTick(() => {
+            this.$refs.paletteInput?.focus()
+            if (this.$refs.paletteList) {
+              this.$refs.paletteList.scrollTop = 0
+            }
+          })
+        },
+        movePalette(step) {
+          const count = this.filteredCommands.length
+          if (count === 0) {
+            return
+          }
+          this.paletteIndex = (this.paletteIndex + step + count) % count
+          this.$nextTick(() => {
+            this.$refs.paletteList?.querySelector(`[data-index="${this.paletteIndex}"]`)?.scrollIntoView({ block: 'nearest' })
+          })
+        },
+        hoverCommand(event, index) {
+          // Browsers fire synthetic mousemove when the list scrolls under a resting pointer; only follow real movement
+          const point = `${event.screenX},${event.screenY}`
+          if (point === this.palettePointer) {
+            return
+          }
+          this.palettePointer = point
+          this.paletteIndex = index
+        },
+        runCommand(command) {
+          if (!command) {
+            return
+          }
+          this.paletteOpen = false
+          command.run()
+        },
+
+        openFind() {
+          this.findOpen = true
+          this.$nextTick(() => this.$refs.findInput?.select())
+        },
+        closeFind() {
+          this.findOpen = false
+          this.findQuery = ''
+          this.applyFind()
+        },
+        stepFind(step) {
+          if (this.findCount === 0) {
+            return
+          }
+          this.findIndex = (this.findIndex + step + this.findCount) % this.findCount
+          this.applyFind()
+        },
+        applyFind() {
+          const preview = this.$refs.preview
+          if (!preview || !window.CSS?.highlights) {
+            return
+          }
+          CSS.highlights.delete('find')
+          CSS.highlights.delete('find-current')
+          const query = this.findQuery.trim().toLowerCase()
+          if (!query) {
+            this.findCount = 0
+            return
+          }
+          const ranges = []
+          const walker = document.createTreeWalker(preview, NodeFilter.SHOW_TEXT)
+          while (walker.nextNode()) {
+            const node = walker.currentNode
+            const text = node.textContent.toLowerCase()
+            let index = text.indexOf(query)
+            while (index !== -1) {
+              const range = new Range()
+              range.setStart(node, index)
+              range.setEnd(node, index + query.length)
+              ranges.push(range)
+              index = text.indexOf(query, index + query.length)
+            }
+          }
+          this.findCount = ranges.length
+          if (ranges.length === 0) {
+            return
+          }
+          this.findIndex = Math.min(this.findIndex, ranges.length - 1)
+          const current = ranges[this.findIndex]
+          CSS.highlights.set('find', new Highlight(...ranges))
+          CSS.highlights.set('find-current', new Highlight(current))
+          current.startContainer.parentElement?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+        },
+
+        scrollToHeading(index) {
+          // Hold proportional scroll sync while both panes jump, or the editor would drag the preview off target
+          this.syncPaused = true
+          window.clearTimeout(this.syncPauseTimer)
+          this.syncPauseTimer = window.setTimeout(() => { this.syncPaused = false }, 600)
+
+          const heading = this.$refs.preview?.querySelectorAll('h1, h2, h3')[index]
+          heading?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          this.revealEditorLine(this.outline[index]?.line)
+        },
+        revealEditorLine(line) {
+          const editor = this.$refs.editor
+          if (!editor || !line || !this.showEditor) {
+            return
+          }
+          const offset = editor.value.split('\n').slice(0, line - 1).join('\n').length + (line > 1 ? 1 : 0)
+          editor.focus({ preventScroll: true })
+          editor.setSelectionRange(offset, offset)
+          this.cursor = { line, col: 1 }
+          const lineHeight = parseFloat(getComputedStyle(editor).lineHeight) || 24
+          editor.scrollTo({ top: Math.max(0, (line - 1) * lineHeight - lineHeight), behavior: 'smooth' })
+        },
+        syncScroll(event) {
+          const editor = event.target
+          if (this.$refs.gutter) {
+            this.$refs.gutter.scrollTop = editor.scrollTop
+          }
+          const scroller = this.$refs.previewScroller
+          const range = editor.scrollHeight - editor.clientHeight
+          if (!scroller || range <= 0 || this.syncPaused) {
+            return
+          }
+          scroller.scrollTop = (editor.scrollTop / range) * (scroller.scrollHeight - scroller.clientHeight)
+        },
+        updateCursor(event) {
+          const lines = event.target.value.slice(0, event.target.selectionStart).split('\n')
+          this.cursor = { line: lines.length, col: lines[lines.length - 1].length + 1 }
+        },
+        wrapSelection(before, after = before, placeholder = 'text') {
+          const editor = this.$refs.editor
+          if (!editor || this.isUtility) {
+            return
+          }
+          const { selectionStart: start, selectionEnd: end, value } = editor
+          const selected = value.slice(start, end) || placeholder
+          this.active.markdown = value.slice(0, start) + before + selected + after + value.slice(end)
+          this.$nextTick(() => {
+            editor.focus()
+            editor.setSelectionRange(start + before.length, start + before.length + selected.length)
+          })
+        },
+        prefixLine(prefix) {
+          const editor = this.$refs.editor
+          if (!editor || this.isUtility) {
+            return
+          }
+          const { selectionStart: start, value } = editor
+          const lineStart = value.lastIndexOf('\n', start - 1) + 1
+          this.active.markdown = value.slice(0, lineStart) + prefix + value.slice(lineStart)
+          this.$nextTick(() => {
+            editor.focus()
+            editor.setSelectionRange(start + prefix.length, start + prefix.length)
+          })
+        },
+
+        handleKeydown(event) {
+          const mod = event.ctrlKey || event.metaKey
+          const key = event.key.toLowerCase()
+          if (event.key === 'Escape') {
+            this.paletteOpen = false
+            if (this.findOpen) {
+              this.closeFind()
+            }
+            return
+          }
+          if (event.key === 'F1') {
+            event.preventDefault()
+            this.openUtility('cheatsheet')
+            return
+          }
+          if (!mod) {
+            return
+          }
+          const actions = {
+            k: () => (this.paletteOpen ? (this.paletteOpen = false) : this.openPalette()),
+            f: () => this.openFind(),
+            s: () => this.save(),
+            b: () => { this.sidebarOpen = !this.sidebarOpen },
+            e: () => this.cycleView(),
+            n: () => this.newTab(),
+            o: () => this.notify('Native open dialog would appear here'),
+          }
+          if (!actions[key]) {
+            return
+          }
+          event.preventDefault()
+          actions[key]()
+        },
+      }))
+    })
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+</head>
+
+<body class="h-full overflow-hidden bg-bg font-sans text-fg antialiased">
+  <div x-data="mockup" x-cloak class="flex h-full flex-col" @keydown.window="handleKeydown($event)">
+
+    <!-- Title bar: brand, inline tabs, command search, view switch -->
+    <header class="flex h-12 shrink-0 items-center gap-1.5 border-b border-line bg-surface px-2">
+      <button class="icon-btn" title="Toggle sidebar (Ctrl B)" @click="sidebarOpen = !sidebarOpen">
+        <i :class="sidebarOpen ? 'ri-side-bar-fill' : 'ri-side-bar-line'"></i>
+      </button>
+
+      <div class="mr-1 flex shrink-0 items-center gap-2 pl-1 pr-2">
+        <div class="grid size-7 place-items-center rounded-lg bg-gradient-to-br from-cyan-400 to-teal-500 text-[15px] text-slate-950 shadow-[0_0_18px_-4px_rgb(34_211_238/0.6)]">
+          <i class="ri-markdown-fill"></i>
+        </div>
+        <span class="hidden text-[14px] font-semibold tracking-tight sm:inline">mdit</span>
+      </div>
+
+      <nav class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none]" role="tablist">
+        <template x-for="tab in tabs" :key="tab.id">
+          <div
+            role="tab"
+            class="group flex h-8 shrink-0 cursor-pointer items-center gap-2 rounded-lg pl-2.5 pr-1 text-[13px] transition"
+            :class="tab.id === activeId ? 'bg-elevated text-fg ring-1 ring-line' : 'text-muted hover:bg-fg/6 hover:text-fg'"
+            :aria-selected="tab.id === activeId"
+            :title="tab.path ? `${tab.path}/${tab.title}` : tab.title"
+            @click="activate(tab.id)"
+            @auxclick.prevent="closeTab(tab.id)"
+          >
+            <i :class="[tabIcon(tab), tab.kind === 'utility' ? 'text-violet-400' : 'text-accent']"></i>
+            <span class="max-w-40 truncate" x-text="tab.title"></span>
+            <button class="relative grid size-5 place-items-center rounded-md hover:bg-fg/10" title="Close tab" @click.stop="closeTab(tab.id)">
+              <span class="size-2 rounded-full bg-amber-400" :class="isDirty(tab) ? 'block group-hover:hidden' : 'hidden'"></span>
+              <i class="ri-close-line text-[14px]" :class="isDirty(tab) ? 'hidden group-hover:block' : (tab.id === activeId ? 'block' : 'block opacity-0 group-hover:opacity-100')"></i>
+            </button>
+          </div>
+        </template>
+        <button class="icon-btn-sm" title="New document (Ctrl N)" @click="newTab()"><i class="ri-add-line"></i></button>
+      </nav>
+
+      <button
+        class="hidden h-8 w-72 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-lg border border-line bg-bg/60 px-2.5 text-[13px] text-muted transition hover:border-accent/40 hover:text-fg lg:flex"
+        @click="openPalette()"
+      >
+        <i class="ri-search-line"></i>
+        <span class="flex-1 truncate text-left">Search or run a command</span>
+        <span class="kbd">Ctrl K</span>
+      </button>
+      <button class="icon-btn lg:hidden" title="Command palette" @click="openPalette()"><i class="ri-command-line"></i></button>
+
+      <div
+        class="hidden shrink-0 items-center rounded-lg bg-bg/60 p-0.5 ring-1 ring-line sm:flex"
+        role="radiogroup"
+        aria-label="View mode"
+        :title="isUtility ? 'Read-only documents have no source view. Use “Edit a copy” to change it.' : 'Switch view (Ctrl E)'"
+      >
+        <template x-for="mode in viewModes" :key="mode.id">
+          <button
+            class="flex h-7 min-w-8 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 text-[15px] transition disabled:cursor-not-allowed disabled:opacity-40"
+            :class="view === mode.id && !isUtility ? 'bg-elevated text-accent shadow-sm' : 'text-muted hover:text-fg'"
+            :title="isUtility ? '' : mode.label"
+            :disabled="isUtility"
+            @click="view = mode.id"
+          >
+            <i :class="mode.icon"></i>
+            <span class="hidden text-[12.5px] font-medium xl:inline" x-text="mode.label"></span>
+          </button>
+        </template>
+      </div>
+
+      <button class="icon-btn" title="Toggle theme" @click="toggleTheme()">
+        <i :class="theme === 'dark' ? 'ri-sun-line' : 'ri-moon-clear-line'"></i>
+      </button>
+    </header>
+
+    <div class="relative flex min-h-0 flex-1">
+
+      <!-- Sidebar: open documents + live outline -->
+      <div x-show="sidebarOpen" x-transition.opacity class="absolute inset-0 z-20 bg-slate-950/40 lg:hidden" @click="sidebarOpen = false"></div>
+      <aside
+        x-show="sidebarOpen"
+        x-transition:enter="transition duration-150 ease-out"
+        x-transition:enter-start="-translate-x-4 opacity-0"
+        x-transition:leave="transition duration-100 ease-in"
+        x-transition:leave-end="-translate-x-4 opacity-0"
+        class="flex w-64 shrink-0 flex-col border-r border-line bg-surface max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:z-30 max-lg:shadow-2xl"
+      >
+        <div class="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+          <div class="section-label flex items-center justify-between">
+            <span>Open documents</span>
+            <span class="rounded-full bg-elevated px-1.5 text-[10px] font-medium normal-case tracking-normal" x-text="tabs.length"></span>
+          </div>
+          <template x-for="tab in tabs" :key="`side-${tab.id}`">
+            <button class="side-item" :class="tab.id === activeId && 'bg-accent/10 !text-fg'" @click="activate(tab.id)">
+              <i class="text-[15px]" :class="[tabIcon(tab), tab.kind === 'utility' ? 'text-violet-400' : 'text-accent']"></i>
+              <span class="min-w-0 flex-1 truncate" x-text="tab.title"></span>
+              <span x-show="isDirty(tab)" class="size-1.5 rounded-full bg-amber-400" title="Unsaved changes"></span>
+            </button>
+          </template>
+
+          <div class="section-label">Outline</div>
+          <template x-for="(item, index) in outline" :key="`${activeId}-${index}`">
+            <button
+              class="side-item !py-1"
+              :style="`padding-left: ${0.75 + (item.depth - 1) * 0.85}rem`"
+              :title="`Line ${item.line}`"
+              @click="scrollToHeading(index)"
+            >
+              <span class="text-[10px] font-semibold text-muted/60" x-text="`H${item.depth}`"></span>
+              <span class="min-w-0 flex-1 truncate" :class="item.depth === 1 && 'font-medium text-fg'" x-text="item.text"></span>
+            </button>
+          </template>
+          <p x-show="outline.length === 0" class="px-3 text-[12px] text-muted">No headings yet.</p>
+        </div>
+
+        <div class="m-2 rounded-xl border border-line bg-elevated/60 p-3 text-[12px] leading-relaxed text-muted">
+          <div class="mb-1 flex items-center gap-1.5 font-medium text-fg"><i class="ri-lightbulb-flash-line text-accent"></i> Tip</div>
+          Press <span class="kbd">Ctrl K</span> to search commands, open files and switch views.
+        </div>
+      </aside>
+
+      <!-- Workspace -->
+      <main class="flex min-w-0 flex-1 flex-col">
+        <div class="flex h-11 shrink-0 items-center gap-2 px-4">
+          <div class="flex min-w-0 items-center gap-1.5 text-[13px] text-muted">
+            <template x-if="active?.path">
+              <span class="flex items-center gap-1.5 truncate">
+                <i class="ri-folder-3-line"></i>
+                <span class="truncate" x-text="active.path"></span>
+                <i class="ri-arrow-right-s-line text-muted/60"></i>
+              </span>
+            </template>
+            <span class="truncate font-medium text-fg" x-text="active?.title"></span>
+          </div>
+          <span
+            x-show="!isUtility"
+            class="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+            :class="isDirty(active) ? 'bg-amber-400/12 text-amber-500' : 'bg-emerald-400/12 text-emerald-500'"
+          >
+            <i :class="isDirty(active) ? 'ri-edit-circle-line' : 'ri-checkbox-circle-line'"></i>
+            <span x-text="isDirty(active) ? 'Edited' : 'Saved'"></span>
+          </span>
+          <span x-show="isUtility" class="shrink-0 rounded-full bg-violet-400/12 px-2 py-0.5 text-[11px] font-medium text-violet-400">Read-only</span>
+
+          <div class="ml-auto flex items-center gap-1.5">
+            <button class="icon-btn" title="Find (Ctrl F)" @click="openFind()"><i class="ri-search-line"></i></button>
+            <button class="icon-btn" title="Copy HTML" @click="notify('Copied rendered HTML')"><i class="ri-file-copy-line"></i></button>
+            <button
+              class="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-accent px-3 text-[13px] font-semibold text-accent-ink shadow-[0_6px_20px_-8px_var(--accent)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+              :disabled="isUtility || !isDirty(active)"
+              @click="save()"
+            >
+              <i class="ri-save-3-line"></i>
+              <span class="hidden sm:inline">Save</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="relative flex min-h-0 flex-1 flex-col gap-3 px-3 pb-3 md:flex-row">
+
+          <!-- Floating find bar -->
+          <div
+            x-show="findOpen"
+            x-transition
+            class="absolute right-6 top-14 z-10 flex items-center gap-1 rounded-xl border border-line bg-surface/95 p-1 pl-3 shadow-xl backdrop-blur"
+          >
+            <i class="ri-search-line text-muted"></i>
+            <input
+              x-ref="findInput"
+              x-model="findQuery"
+              class="w-40 bg-transparent px-1 text-[13px] outline-none placeholder:text-muted/70 sm:w-52"
+              placeholder="Find in preview"
+              @input="findIndex = 0; $nextTick(() => applyFind())"
+              @keydown.enter.prevent="stepFind($event.shiftKey ? -1 : 1)"
+            >
+            <span class="min-w-14 text-right text-[11px] tabular-nums text-muted" x-text="findQuery ? (findCount ? `${findIndex + 1} / ${findCount}` : 'No results') : ''"></span>
+            <button class="icon-btn-sm" title="Previous (Shift Enter)" @click="stepFind(-1)"><i class="ri-arrow-up-s-line"></i></button>
+            <button class="icon-btn-sm" title="Next (Enter)" @click="stepFind(1)"><i class="ri-arrow-down-s-line"></i></button>
+            <button class="icon-btn-sm" title="Close (Esc)" @click="closeFind()"><i class="ri-close-line"></i></button>
+          </div>
+
+          <!-- Editor -->
+          <section x-show="showEditor" class="pane">
+            <div class="pane-head">
+              <span class="text-[12px] font-semibold uppercase tracking-wider text-muted">Markdown</span>
+              <button x-show="view === 'editor'" class="pane-toggle" title="Show preview (Ctrl E)" @click="view = 'split'">
+                <i class="ri-eye-line"></i> Show preview
+              </button>
+              <div class="ml-auto flex items-center gap-0.5">
+                <button class="icon-btn-sm" title="Heading" @click="prefixLine('## ')"><i class="ri-heading"></i></button>
+                <button class="icon-btn-sm" title="Bold" @click="wrapSelection('**')"><i class="ri-bold"></i></button>
+                <button class="icon-btn-sm" title="Italic" @click="wrapSelection('*')"><i class="ri-italic"></i></button>
+                <span class="mx-1 h-4 w-px bg-line"></span>
+                <button class="icon-btn-sm" title="Link" @click="wrapSelection('[', '](https://)', 'link')"><i class="ri-link"></i></button>
+                <button class="icon-btn-sm" title="Inline code" @click="wrapSelection('`', '`', 'code')"><i class="ri-code-line"></i></button>
+                <button class="icon-btn-sm hidden sm:grid" title="Quote" @click="prefixLine('> ')"><i class="ri-double-quotes-l"></i></button>
+                <button class="icon-btn-sm hidden sm:grid" title="Task" @click="prefixLine('- [ ] ')"><i class="ri-checkbox-line"></i></button>
+              </div>
+            </div>
+            <div class="flex min-h-0 flex-1">
+              <div x-ref="gutter" class="w-11 shrink-0 select-none overflow-hidden pb-[75vh] pt-4 pr-3 text-right font-mono text-[12px] leading-6 text-gutter" aria-hidden="true">
+                <template x-for="n in lineCount" :key="n">
+                  <div :class="n === cursor.line && 'text-accent'" x-text="n"></div>
+                </template>
+              </div>
+              <textarea
+                x-ref="editor"
+                x-model="active.markdown"
+                wrap="off"
+                spellcheck="false"
+                class="min-h-0 flex-1 resize-none bg-transparent pb-[75vh] pt-4 pr-4 font-mono text-[13px] leading-6 text-fg caret-accent outline-none selection:bg-accent/25"
+                placeholder="# Start writing…"
+                @scroll="syncScroll($event)"
+                @keyup="updateCursor($event)"
+                @click="updateCursor($event)"
+              ></textarea>
+            </div>
+          </section>
+
+          <!-- Preview -->
+          <section x-show="showPreview" class="pane">
+            <div class="pane-head">
+              <span class="text-[12px] font-semibold uppercase tracking-wider text-muted">Preview</span>
+              <span class="flex items-center gap-1.5 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
+                <span class="size-1.5 animate-pulse rounded-full bg-accent"></span> Live
+              </span>
+              <button x-show="view === 'preview' && !isUtility" class="pane-toggle" title="Show source (Ctrl E)" @click="view = 'split'">
+                <i class="ri-code-s-slash-line"></i> Show source
+              </button>
+              <button x-show="isUtility" class="pane-toggle" title="Open an editable copy as a new document" @click="editCopy()">
+                <i class="ri-file-copy-2-line"></i> Edit a copy
+              </button>
+              <span class="ml-auto text-[12px] text-muted" x-text="`${readMinutes} min read`"></span>
+            </div>
+            <div x-ref="previewScroller" class="min-h-0 flex-1 overflow-y-auto">
+              <article
+                x-ref="preview"
+                class="md-preview mx-auto max-w-3xl px-6 pb-[75vh] pt-8 sm:px-10"
+                x-html="html"
+                x-effect="html; findOpen && $nextTick(() => applyFind())"
+                @click="$event.target.closest('a') && ($event.preventDefault(), notify('Link opens in your default browser'))"
+              ></article>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <!-- Status bar -->
+    <footer class="flex h-7 shrink-0 items-center gap-4 border-t border-line bg-surface px-3 text-[11.5px] text-muted">
+      <span class="flex items-center gap-1.5">
+        <span class="size-1.5 rounded-full" :class="isDirty(active) ? 'bg-amber-400' : 'bg-emerald-400'"></span>
+        <span x-text="isUtility ? 'Utility document' : (isDirty(active) ? 'Unsaved changes' : 'All changes saved')"></span>
+      </span>
+      <span class="ml-auto tabular-nums" x-show="showEditor" x-text="`Ln ${cursor.line}, Col ${cursor.col}`"></span>
+      <span class="tabular-nums" x-text="`${wordCount} words`"></span>
+      <span class="hidden sm:inline">UTF-8</span>
+      <span class="hidden items-center gap-1 sm:flex"><i class="ri-markdown-line"></i> Markdown</span>
+    </footer>
+
+    <!-- Command palette -->
+    <div
+      x-show="paletteOpen"
+      x-transition.opacity.duration.150ms
+      class="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/50 px-4 pt-[12vh] backdrop-blur-sm"
+      @click.self="paletteOpen = false"
+    >
+      <div
+        x-show="paletteOpen"
+        x-transition:enter="transition duration-150 ease-out"
+        x-transition:enter-start="scale-95 opacity-0"
+        class="w-full max-w-xl overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl"
+        role="dialog"
+        aria-label="Command palette"
+      >
+        <div class="flex items-center gap-3 border-b border-line px-4">
+          <i class="ri-command-line text-lg text-accent"></i>
+          <input
+            x-ref="paletteInput"
+            x-model="paletteQuery"
+            class="h-13 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted/70"
+            placeholder="Type a command…"
+            @input="paletteIndex = 0"
+            @keydown.arrow-down.prevent="movePalette(1)"
+            @keydown.arrow-up.prevent="movePalette(-1)"
+            @keydown.enter.prevent="runCommand(filteredCommands[paletteIndex])"
+          >
+          <span class="kbd">Esc</span>
+        </div>
+        <ul x-ref="paletteList" class="max-h-80 scroll-py-1.5 overflow-y-auto p-1.5">
+          <template x-for="(command, index) in filteredCommands" :key="command.label">
+            <li>
+              <button
+                class="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left text-[13.5px]"
+                :class="index === paletteIndex ? 'bg-accent/12 text-fg' : 'text-muted'"
+                :data-index="index"
+                @mousemove="hoverCommand($event, index)"
+                @click="runCommand(command)"
+              >
+                <i class="text-[16px]" :class="[command.icon, index === paletteIndex && 'text-accent']"></i>
+                <span class="flex-1" x-text="command.label"></span>
+                <span x-show="command.keys" class="kbd" x-text="command.keys"></span>
+              </button>
+            </li>
+          </template>
+          <li x-show="filteredCommands.length === 0" class="px-3 py-6 text-center text-[13px] text-muted">No matching commands</li>
+        </ul>
+        <div class="flex items-center gap-4 border-t border-line px-4 py-2 text-[11px] text-muted">
+          <span><span class="kbd">↑</span> <span class="kbd">↓</span> navigate</span>
+          <span><span class="kbd">↵</span> run</span>
+          <span class="ml-auto">mdit 2.0 mockup</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div
+      x-show="toast"
+      x-transition
+      class="fixed bottom-10 right-4 z-50 flex items-center gap-2 rounded-xl border border-line bg-elevated px-3.5 py-2.5 text-[13px] shadow-2xl"
+    >
+      <i class="ri-checkbox-circle-fill text-emerald-400"></i>
+      <span x-text="toast"></span>
+    </div>
+  </div>
+</body>
+</html>
