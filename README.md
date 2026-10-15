@@ -371,6 +371,8 @@ Windows builds are not code-signed, so SmartScreen may warn on first launch ("Mo
 
 The Flatpak registers mdit for Markdown files (`text/markdown`), so it shows up under "Open with" in file managers. The AppImage carries the same desktop entry; it is registered when you integrate the AppImage (for example with Gear Lever or AppImageLauncher).
 
+On Windows, the installer registers mdit for `.md` and `.markdown` files ("Open with" and the default-app picker); the portable zip does not. On macOS, the app declares both extensions, so after copying `mdit.app` to Applications it is offered under "Open With" in Finder. Files opened while mdit is running open in a new tab.
+
 You can also open a file directly from a terminal: `mdit notes.md` (`.md` and `.markdown` are accepted).
 
 Linux packaging files (desktop entry, AppStream metadata, icons, Flatpak manifest, AppImage launcher) live in `packaging/`.

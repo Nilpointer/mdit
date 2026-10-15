@@ -5,15 +5,20 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
 type App struct {
-	ctx             context.Context
-	lastOpenDir     string
+	ctx         context.Context
+	lastOpenDir string
+
+	// mu guards the startup hand-off between OS file-open callbacks and the frontend.
+	mu              sync.Mutex
 	startupFilePath string
+	frontendReady   bool
 }
 
 type FilePayload struct {
@@ -53,13 +58,39 @@ func isMarkdownPath(path string) bool {
 // The frontend pulls it after it is ready, so the file cannot be lost to a startup race.
 // It returns nil, nil when no file was passed or it was already handed out.
 func (a *App) GetStartupFile() (*FilePayload, error) {
+	a.mu.Lock()
 	startupPath := strings.TrimSpace(a.startupFilePath)
 	a.startupFilePath = ""
+	a.frontendReady = true
+	a.mu.Unlock()
+
 	if startupPath == "" || !isMarkdownPath(startupPath) {
 		return nil, nil
 	}
 
 	return a.readFilePayload(startupPath)
+}
+
+// openFileFromOS handles files the OS asks the running app to open (macOS Finder double-click
+// or "Open With"; macOS does not pass these as command-line arguments).
+// Until the frontend has pulled the startup file, the path becomes the startup file.
+// After that it is sent to the frontend as an "open-file" event and opens in a new tab.
+func (a *App) openFileFromOS(path string) {
+	a.mu.Lock()
+	if !a.frontendReady {
+		a.startupFilePath = path
+		a.mu.Unlock()
+		return
+	}
+	a.mu.Unlock()
+
+	payload, err := a.readFilePayload(path)
+	if err != nil {
+		runtime.EventsEmit(a.ctx, "open-file-error", err.Error())
+		return
+	}
+
+	runtime.EventsEmit(a.ctx, "open-file", payload)
 }
 
 func (a *App) OpenFile() (*FilePayload, error) {

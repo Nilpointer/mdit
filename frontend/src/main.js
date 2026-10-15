@@ -13,7 +13,7 @@ import 'remixicon/fonts/remixicon.css';
 import cheatSheetMarkdown from './assets/markdown/cheatsheet.md?raw';
 import aboutMarkdown from './assets/markdown/about.md?raw';
 
-import { BrowserOpenURL, ClipboardSetText, Quit } from '../wailsjs/runtime/runtime';
+import { BrowserOpenURL, ClipboardSetText, EventsOn, Quit } from '../wailsjs/runtime/runtime';
 
 const initialMarkdown = `# mdit Markdown Viewer
 
@@ -176,7 +176,17 @@ window.markdownViewer = () => {
         focus: false,
       });
       this.setActiveTab(defaultTab.id);
+      this.listenForOsFileOpens();
       this.openStartupFile();
+    },
+    listenForOsFileOpens() {
+      // Must be registered before GetStartupFile: from then on the backend sends OS file opens as events.
+      if (!window.runtime) {
+        return;
+      }
+
+      EventsOn('open-file', (payload) => this.openFilePayload(payload, { closeCleanDefaultTab: true }));
+      EventsOn('open-file-error', (message) => this.notify(`Could not open file: ${message}`));
     },
     async openStartupFile() {
       const app = backendApp();

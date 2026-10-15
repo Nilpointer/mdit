@@ -15,6 +15,22 @@
     "productName": "mdit",
     "productVersion": "0.0.0",
     "copyright": "Copyright © 2026 Andreas Ulrich",
-    "comments": "Markdown viewer and editor"
+    "comments": "Markdown viewer and editor",
+    "fileAssociations": [
+      {
+        "ext": "md",
+        "name": "mdit.markdown",
+        "description": "Markdown Document",
+        "iconName": "iconfile",
+        "role": "Editor"
+      },
+      {
+        "ext": "markdown",
+        "name": "mdit.markdown",
+        "description": "Markdown Document",
+        "iconName": "iconfile",
+        "role": "Editor"
+      }
+    ]
   }
 }
