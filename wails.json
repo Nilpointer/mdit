@@ -21,14 +21,14 @@
         "ext": "md",
         "name": "mdit.markdown",
         "description": "Markdown Document",
-        "iconName": "iconfile",
+        "iconName": "markdown-doc",
         "role": "Editor"
       },
       {
         "ext": "markdown",
         "name": "mdit.markdown",
         "description": "Markdown Document",
-        "iconName": "iconfile",
+        "iconName": "markdown-doc",
         "role": "Editor"
       }
     ]
