@@ -127,13 +127,13 @@ jobs:
           name: linux-binary
           path: dist/linux
 
+      # The container image ships flatpak-builder and the GNOME 51 runtime + SDK.
+      # rofiles-fuse is disabled because FUSE is unavailable inside the container.
       - name: Build Flatpak bundle
-        uses: flathub-infra/flatpak-github-actions/flatpak-builder@933e9e8ca36e85046ebca8e211f0785c6becac40
-        with:
-          manifest-path: packaging/flatpak/io.github.Nilpointer.mdit.yml
-          bundle: mdit-${{ env.VERSION }}-x86_64.flatpak
-          cache-key: flatpak-builder-${{ github.sha }}
-          upload-artifact: false
+        run: |
+          flatpak-builder --repo=flatpak-repo --force-clean --disable-rofiles-fuse \
+            flatpak-build packaging/flatpak/io.github.Nilpointer.mdit.yml
+          flatpak build-bundle flatpak-repo "mdit-${VERSION}-x86_64.flatpak" io.github.Nilpointer.mdit
 
       - name: Upload Flatpak bundle
         uses: actions/upload-artifact@v7
