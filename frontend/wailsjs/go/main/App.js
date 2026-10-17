@@ -13,3 +13,7 @@ export function OpenFile() {
 export function SaveFile(arg1, arg2) {
   return window['go']['main']['App']['SaveFile'](arg1, arg2);
 }
+
+export function SetUnsavedChanges(arg1) {
+  return window['go']['main']['App']['SetUnsavedChanges'](arg1);
+}

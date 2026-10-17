@@ -41,6 +41,8 @@ export const createCore = () => {
       for (const key of ['view', 'sidebarOpen', 'theme', 'wordWrap']) {
         this.$watch(key, () => this.persistPrefs());
       }
+      // The backend asks before closing the window while this count is above zero (lifecycle.go).
+      this.$watch('unsavedCount', (count) => backendApp()?.SetUnsavedChanges?.(count));
 
       const defaultTab = this.createTab({
         markdown: initialMarkdown,

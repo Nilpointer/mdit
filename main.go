@@ -34,6 +34,7 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
+		OnBeforeClose:    app.beforeClose,
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId:               instanceID,
 			OnSecondInstanceLaunch: app.onSecondInstanceLaunch,

@@ -16,10 +16,12 @@ type App struct {
 	ctx         context.Context
 	lastOpenDir string
 
-	// mu guards the startup hand-off between OS file-open callbacks and the frontend.
+	// mu guards state shared between bound methods and OS callbacks:
+	// the startup hand-off with the frontend and the unsaved-changes count.
 	mu              sync.Mutex
 	startupFilePath string
 	frontendReady   bool
+	unsavedCount    int
 }
 
 type FilePayload struct {

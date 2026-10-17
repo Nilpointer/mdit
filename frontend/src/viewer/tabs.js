@@ -4,6 +4,9 @@ import { directoryFromPath, filenameFromPath } from '../lib/paths';
 import { utilityDocs } from './constants';
 
 export const tabsPart = {
+  get unsavedCount() {
+    return this.tabs.filter((tab) => tab.isDirty).length;
+  },
   activeTab() {
     return this.tabs.find((tab) => tab.id === this.activeTabId) ?? null;
   },

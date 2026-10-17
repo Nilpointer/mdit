@@ -7,3 +7,5 @@ export function GetStartupFile():Promise<main.FilePayload>;
 export function OpenFile():Promise<main.FilePayload>;
 
 export function SaveFile(arg1:string,arg2:string):Promise<string>;
+
+export function SetUnsavedChanges(arg1:number):Promise<void>;
