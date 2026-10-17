@@ -29,6 +29,15 @@
     --gutter: #475569;
     --search-match: rgb(251 146 60 / 0.4);
     --search-current: #f97316;
+    --hl-keyword: #c084fc;
+    --hl-string: #86efac;
+    --hl-number: #fdba74;
+    --hl-comment: #64748b;
+    --hl-function: #67e8f9;
+    --hl-type: #fcd34d;
+    --hl-attr: #7dd3fc;
+    --hl-tag: #f472b6;
+    --hl-deletion: #fca5a5;
     color-scheme: dark;
   }
 
@@ -45,6 +54,15 @@
     --gutter: #94a3b8;
     --search-match: rgb(251 146 60 / 0.35);
     --search-current: #fb923c;
+    --hl-keyword: #7c3aed;
+    --hl-string: #15803d;
+    --hl-number: #c2410c;
+    --hl-comment: #94a3b8;
+    --hl-function: #0e7490;
+    --hl-type: #b45309;
+    --hl-attr: #0369a1;
+    --hl-tag: #be185d;
+    --hl-deletion: #b91c1c;
     color-scheme: light;
   }
 
@@ -276,6 +294,73 @@
     border: 0;
     padding: 0;
     font-size: inherit;
+  }
+
+  /* Syntax highlighting tokens (highlight.js class names), colored from theme variables. */
+  .markdown-preview .hljs-keyword,
+  .markdown-preview .hljs-selector-tag,
+  .markdown-preview .hljs-meta .hljs-keyword,
+  .markdown-preview .hljs-doctag {
+    color: var(--hl-keyword);
+  }
+
+  .markdown-preview .hljs-string,
+  .markdown-preview .hljs-regexp,
+  .markdown-preview .hljs-addition,
+  .markdown-preview .hljs-meta .hljs-string {
+    color: var(--hl-string);
+  }
+
+  .markdown-preview .hljs-number,
+  .markdown-preview .hljs-literal,
+  .markdown-preview .hljs-symbol,
+  .markdown-preview .hljs-bullet {
+    color: var(--hl-number);
+  }
+
+  .markdown-preview .hljs-comment,
+  .markdown-preview .hljs-quote {
+    color: var(--hl-comment);
+    font-style: italic;
+  }
+
+  .markdown-preview .hljs-title,
+  .markdown-preview .hljs-section,
+  .markdown-preview .hljs-selector-id {
+    color: var(--hl-function);
+  }
+
+  .markdown-preview .hljs-type,
+  .markdown-preview .hljs-built_in,
+  .markdown-preview .hljs-title.class_,
+  .markdown-preview .hljs-selector-class {
+    color: var(--hl-type);
+  }
+
+  .markdown-preview .hljs-attr,
+  .markdown-preview .hljs-attribute,
+  .markdown-preview .hljs-variable,
+  .markdown-preview .hljs-template-variable,
+  .markdown-preview .hljs-params {
+    color: var(--hl-attr);
+  }
+
+  .markdown-preview .hljs-tag,
+  .markdown-preview .hljs-name,
+  .markdown-preview .hljs-meta {
+    color: var(--hl-tag);
+  }
+
+  .markdown-preview .hljs-deletion {
+    color: var(--hl-deletion);
+  }
+
+  .markdown-preview .hljs-emphasis {
+    font-style: italic;
+  }
+
+  .markdown-preview .hljs-strong {
+    font-weight: 600;
   }
 
   /* Code block chrome added by decorateCodeBlocks: language label left, copy button right. */

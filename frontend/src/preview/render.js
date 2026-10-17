@@ -3,6 +3,7 @@ import { marked } from 'marked';
 
 import { countLines } from '../lib/editor';
 import { isAbsoluteLocalPath } from '../lib/paths';
+import { highlightCode } from './highlight';
 
 marked.setOptions({
   gfm: true,
@@ -86,6 +87,7 @@ export const decorateCodeBlocks = (root) => {
     header.className = 'code-block-header';
     if (languageClass) {
       header.dataset.lang = languageClass.slice('language-'.length);
+      highlightCode(code, header.dataset.lang);
     }
 
     const copyButton = document.createElement('button');

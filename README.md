@@ -32,7 +32,7 @@ Ready-made packages for Windows, macOS and Linux (Flatpak, AppImage, tar.gz) are
 - Sidebar with open documents and a heading outline that jumps both panes
 - Find in preview with match highlighting (`Ctrl F`)
 - Local images next to your document (relative or absolute paths), see [Local images](#local-images)
-- Code blocks show their language and have a copy-to-clipboard button
+- Code blocks with syntax highlighting (Go, JavaScript/TypeScript, Python, Rust, shell, SQL, JSON, YAML, HTML/CSS and more), a language label and a copy-to-clipboard button
 - Open files from the terminal (`mdit notes.md`) or via "Open with"; `.md`/`.markdown` file associations on Windows, macOS and Linux
 - Single instance: opening another file while mdit runs adds it as a tab in the existing window
 - Light and dark themes; view, sidebar, theme and wrap preferences are remembered
