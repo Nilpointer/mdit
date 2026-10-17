@@ -8,6 +8,7 @@ import { filesPart } from './files';
 import { scrollPart } from './scroll';
 import { linksPart } from './links';
 import { searchPart } from './search';
+import { sessionPart } from './session';
 import { palettePart } from './palette';
 import { feedbackPart } from './feedback';
 import { keyboardPart } from './keyboard';
@@ -23,6 +24,7 @@ export const createMarkdownViewer = () => compose(
   scrollPart,
   linksPart,
   searchPart,
+  sessionPart,
   palettePart,
   feedbackPart,
   keyboardPart,

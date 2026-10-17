@@ -22,7 +22,9 @@ Ready-made packages for Windows, macOS and Linux (Flatpak, AppImage, tar.gz) are
 - Live Markdown rendering with `marked`
 - Sanitized preview HTML with `DOMPurify`
 - Command palette (`Ctrl K`) for every action, plus keyboard shortcuts
-- Open and save Markdown files through native dialogs
+- Open and save Markdown files through native dialogs, with Save As and a list of recent files in the command palette
+- Warns before closing the window or quitting when tabs have unsaved changes
+- Restores the tabs of the last session on start
 - Tabbed Markdown workspace with unsaved-change indicators
 - Undo/redo history in the editor, formatting toolbar, line numbers and optional word wrap (`Alt Z`)
 - Editor / Split / Preview view modes (`Ctrl E`)
@@ -43,6 +45,7 @@ Ready-made packages for Windows, macOS and Linux (Flatpak, AppImage, tar.gz) are
 |---|---|
 | `Ctrl/Cmd K` | Command palette |
 | `Ctrl/Cmd N` / `O` / `S` | New, open, save |
+| `Ctrl/Cmd Shift S` | Save As |
 | `Ctrl/Cmd W` | Close tab |
 | `Ctrl/Cmd Tab` / `Shift Tab` | Next / previous tab |
 | `Ctrl/Cmd Z` / `Y` (or `Shift Z`) | Undo / redo |

@@ -152,35 +152,59 @@ func (a *App) OpenFile() (*FilePayload, error) {
 	return a.readFilePayload(path)
 }
 
+// SaveFile writes content to currentPath, or asks for a path when the document has none yet.
+// It returns "" when the user cancels the dialog.
 func (a *App) SaveFile(content, currentPath string) (string, error) {
 	savePath := strings.TrimSpace(currentPath)
 	if savePath == "" {
-		selectedPath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-			Title:           "Save Markdown File",
-			DefaultFilename: "document.md",
-			Filters: []runtime.FileFilter{
-				{DisplayName: "Markdown files (*.md)", Pattern: "*.md"},
-				{DisplayName: "Text files (*.txt)", Pattern: "*.txt"},
-			},
-		})
-		if err != nil {
-			return "", err
-		}
-		if selectedPath == "" {
-			return "", nil
-		}
-		savePath = selectedPath
+		return a.SaveFileAs(content, "")
+	}
+	return a.writeMarkdown(savePath, content)
+}
+
+// SaveFileAs always asks for a path, starting at the current file's folder and name.
+// It returns "" when the user cancels the dialog.
+func (a *App) SaveFileAs(content, currentPath string) (string, error) {
+	dialogOptions := runtime.SaveDialogOptions{
+		Title:           "Save Markdown File",
+		DefaultFilename: "document.md",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Markdown files (*.md)", Pattern: "*.md"},
+			{DisplayName: "Text files (*.txt)", Pattern: "*.txt"},
+		},
+	}
+	if path := strings.TrimSpace(currentPath); path != "" {
+		dialogOptions.DefaultDirectory = filepath.Dir(path)
+		dialogOptions.DefaultFilename = filepath.Base(path)
+	} else if a.lastOpenDir != "" {
+		dialogOptions.DefaultDirectory = a.lastOpenDir
 	}
 
-	if filepath.Ext(savePath) == "" {
-		savePath += ".md"
+	selectedPath, err := runtime.SaveFileDialog(a.ctx, dialogOptions)
+	if err != nil {
+		return "", err
 	}
+	if selectedPath == "" {
+		return "", nil
+	}
+	return a.writeMarkdown(selectedPath, content)
+}
 
-	a.lastOpenDir = filepath.Dir(savePath)
-
-	if err := os.WriteFile(savePath, []byte(content), 0o644); err != nil {
+// writeMarkdown writes UTF-8 text to path, appending .md when the path has no extension.
+func (a *App) writeMarkdown(path, content string) (string, error) {
+	if filepath.Ext(path) == "" {
+		path += ".md"
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return "", err
 	}
 
-	return savePath, nil
+	a.lastOpenDir = filepath.Dir(path)
+	return path, nil
+}
+
+// ReadFile reads a Markdown file by path, for reopening recent files, restoring the
+// session, dropped files and reloading files that changed on disk.
+func (a *App) ReadFile(path string) (*FilePayload, error) {
+	return a.readFilePayload(path)
 }

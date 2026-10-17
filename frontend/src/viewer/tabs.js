@@ -133,7 +133,7 @@ export const tabsPart = {
     this.removeTab(defaultTab.id, { createFallback: false });
     return true;
   },
-  openFilePayload(payload, { closeCleanDefaultTab = true } = {}) {
+  openFilePayload(payload, { closeCleanDefaultTab = true, quiet = false } = {}) {
     const content = payload.content ?? payload.Content ?? '';
     const path = payload.path ?? payload.Path ?? '';
     const title = payload.title ?? payload.Title ?? this.makeTabTitle(path);
@@ -157,7 +157,10 @@ export const tabsPart = {
       isDirty: false,
       focus: true,
     });
-    this.notify(`Opened ${filenameFromPath(path)}`);
+    this.rememberRecent(path);
+    if (!quiet) {
+      this.notify(`Opened ${filenameFromPath(path)}`);
+    }
   },
   closeAllTabs() {
     const dirtyCount = this.tabs.filter((tab) => tab.isDirty).length;

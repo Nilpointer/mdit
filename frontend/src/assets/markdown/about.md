@@ -34,6 +34,7 @@ This software is free and open source, released under the MIT License. You use i
 - `Ctrl/Cmd + N` - New document
 - `Ctrl/Cmd + O` - Open file
 - `Ctrl/Cmd + S` - Save active tab
+- `Ctrl/Cmd + Shift + S` - Save As
 - `Ctrl/Cmd + W` - Close active tab
 - `Ctrl/Cmd + Tab` - Next tab
 - `Ctrl/Cmd + Shift + Tab` - Previous tab

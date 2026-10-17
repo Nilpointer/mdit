@@ -39,7 +39,7 @@ export const keyboardPart = {
     const actions = {
       k: () => this.togglePalette(),
       o: () => this.openFile(),
-      s: () => this.saveFile(),
+      s: () => (event.shiftKey ? this.saveFileAs() : this.saveFile()),
       n: () => this.newDocument(),
       w: () => this.activeTabId !== null && this.closeTab(this.activeTabId),
       b: () => this.toggleSidebar(),

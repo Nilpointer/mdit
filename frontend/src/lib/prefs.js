@@ -1,19 +1,23 @@
-// UI preferences in localStorage; every access is wrapped because storage can be unavailable.
+// Small JSON values in localStorage; every access is wrapped because storage can be unavailable.
+
+export const loadStored = (key, fallback) => {
+  try {
+    return JSON.parse(window.localStorage.getItem(key)) ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+export const saveStored = (key, value) => {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Stored values are a convenience; ignore unavailable storage.
+  }
+};
 
 const prefsKey = 'mdit.ui';
 
-export const loadPrefs = () => {
-  try {
-    return JSON.parse(window.localStorage.getItem(prefsKey)) ?? {};
-  } catch {
-    return {};
-  }
-};
+export const loadPrefs = () => loadStored(prefsKey, {});
 
-export const savePrefs = (prefs) => {
-  try {
-    window.localStorage.setItem(prefsKey, JSON.stringify(prefs));
-  } catch {
-    // Preferences are a convenience; ignore unavailable storage.
-  }
-};
+export const savePrefs = (prefs) => saveStored(prefsKey, prefs);

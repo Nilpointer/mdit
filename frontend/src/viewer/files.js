@@ -24,6 +24,13 @@ export const filesPart = {
     }
   },
   async saveFile() {
+    await this.saveActiveTab('SaveFile');
+  },
+  async saveFileAs() {
+    await this.saveActiveTab('SaveFileAs');
+  },
+  // method is the backend call: SaveFile (dialog only for untitled tabs) or SaveFileAs (always a dialog).
+  async saveActiveTab(method) {
     const tab = this.activeTab();
     if (!tab || tab.kind !== 'file') {
       this.statusMessage = 'Save is only available for file tabs';
@@ -31,13 +38,13 @@ export const filesPart = {
     }
 
     const app = backendApp();
-    if (!app?.SaveFile) {
+    if (!app?.[method]) {
       this.notify('Save is only available inside Wails');
       return;
     }
     try {
       const content = tab.markdown;
-      const savedPath = await app.SaveFile(content, tab.filePath);
+      const savedPath = await app[method](content, tab.filePath);
       if (!savedPath) {
         this.statusMessage = 'Save canceled';
         return;
@@ -47,6 +54,7 @@ export const filesPart = {
       tab.title = this.makeTabTitle(savedPath);
       tab.savedMarkdown = content;
       this.updateDirty(tab);
+      this.rememberRecent(savedPath);
       // A first save gives the document a folder, so relative image paths can resolve now.
       this.renderNow();
       this.notify(`Saved ${filenameFromPath(savedPath)}`);

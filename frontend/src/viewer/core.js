@@ -3,6 +3,7 @@
 import { EventsOn } from '../../wailsjs/runtime/runtime';
 import { loadPrefs, savePrefs } from '../lib/prefs';
 import { backendApp, initialMarkdown, viewModes } from './constants';
+import { loadRecentFiles } from './session';
 
 export const createCore = () => {
   const prefs = loadPrefs();
@@ -34,6 +35,7 @@ export const createCore = () => {
     searchIndex: -1,
     searchResultsCount: 0,
     isSearching: false,
+    recentFiles: loadRecentFiles(),
     toast: '',
     toastTimer: null,
     init() {
@@ -52,7 +54,15 @@ export const createCore = () => {
       });
       this.setActiveTab(defaultTab.id);
       this.listenForOsFileOpens();
-      this.openStartupFile();
+      this.startSession();
+    },
+    async startSession() {
+      // Restore the previous tabs first, so a file passed on the command line opens on top of them.
+      // The session is only saved after restoring, or the empty start state would overwrite it.
+      await this.restoreSession();
+      this.$watch('sessionSnapshot', (snapshot) => this.persistSession(snapshot));
+      this.persistSession(this.sessionSnapshot);
+      await this.openStartupFile();
     },
     listenForOsFileOpens() {
       // Must be registered before GetStartupFile: from then on the backend sends OS file opens as events.

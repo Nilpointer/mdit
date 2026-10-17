@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -30,5 +31,42 @@ func TestMarkdownPathFromArgs(t *testing.T) {
 				t.Errorf("markdownPathFromArgs(%q) = %q, want %q", tt.args, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestWriteMarkdown(t *testing.T) {
+	dir := t.TempDir()
+	app := NewApp("")
+
+	saved, err := app.writeMarkdown(filepath.Join(dir, "notes"), "# Notes\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(dir, "notes.md"); saved != want {
+		t.Errorf("path without extension saved as %q, want %q", saved, want)
+	}
+	info, err := os.Stat(saved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := info.Mode().Perm(); perm&0o600 != 0o600 || perm&0o022 != 0 {
+		t.Errorf("file mode = %v, want owner read/write and no group/other write", perm)
+	}
+	if content, _ := os.ReadFile(saved); string(content) != "# Notes\n" {
+		t.Errorf("content = %q", content)
+	}
+	if app.lastOpenDir != dir {
+		t.Errorf("lastOpenDir = %q, want %q", app.lastOpenDir, dir)
+	}
+
+	txt, err := app.writeMarkdown(filepath.Join(dir, "plain.txt"), "x")
+	if err != nil || filepath.Ext(txt) != ".txt" {
+		t.Errorf("explicit extension changed: %q, %v", txt, err)
+	}
+}
+
+func TestReadFileMissing(t *testing.T) {
+	if _, err := NewApp("").ReadFile(filepath.Join(t.TempDir(), "missing.md")); err == nil {
+		t.Error("ReadFile of a missing file returned no error")
 	}
 }
