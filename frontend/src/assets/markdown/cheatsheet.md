@@ -61,6 +61,21 @@ func main() {
 - [x] Build viewer
 - [ ] Add keyboard shortcuts
 
+## Math
+
+Inline: $E = mc^2$
+
+$$
+\sum_{i=1}^{n} i = \frac{n(n+1)}{2}
+$$
+
+## Diagrams
+
+```mermaid
+flowchart LR
+  A[Write] --> B[Preview] --> C[Save]
+```
+
 ## Horizontal Rule
 
 ---

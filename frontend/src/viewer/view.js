@@ -32,6 +32,8 @@ export const viewPart = {
   toggleTheme() {
     this.theme = this.theme === 'dark' ? 'light' : 'dark';
     this.applyTheme();
+    // Mermaid bakes theme colors into its SVGs, so diagrams are redrawn.
+    this.renderNow();
   },
   applyTheme() {
     document.documentElement.dataset.theme = this.theme;

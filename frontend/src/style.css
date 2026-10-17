@@ -363,6 +363,37 @@
     font-weight: 600;
   }
 
+  /* Mermaid diagrams (preview/mermaid.js) and KaTeX math. */
+  .markdown-preview .mermaid-diagram {
+    display: flex;
+    justify-content: center;
+    margin: 1.25rem 0;
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--code-bg);
+    overflow-x: auto;
+  }
+
+  .markdown-preview .mermaid-diagram svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .markdown-preview .mermaid-error {
+    margin: 1.25rem 0 -0.75rem;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    white-space: pre-wrap;
+    color: var(--hl-deletion);
+  }
+
+  .markdown-preview .katex-display {
+    margin: 1.25rem 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
   /* Code block chrome added by decorateCodeBlocks: language label left, copy button right. */
   .markdown-preview .code-block {
     margin: 1.25rem 0;

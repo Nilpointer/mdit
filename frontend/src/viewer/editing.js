@@ -1,6 +1,7 @@
 // Editing and history: part of the markdownViewer Alpine component (merged in viewer/index.js).
 
 import { countLines } from '../lib/editor';
+import { renderMermaidDiagrams } from '../preview/mermaid';
 import { decoratePreview, outlineFromMarkdown, renderMarkdown } from '../preview/render';
 
 export const editingPart = {
@@ -16,9 +17,14 @@ export const editingPart = {
     this.exportHtml = renderMarkdown(this.markdown);
     this.renderedHtml = decoratePreview(this.exportHtml, this.activeDirectory());
     this.outline = outlineFromMarkdown(this.markdown);
-    if (this.isSearching) {
-      this.$nextTick(() => this.refreshSearchResults());
-    }
+    this.$nextTick(async () => {
+      if (this.$refs.preview) {
+        await renderMermaidDiagrams(this.$refs.preview, this.theme);
+      }
+      if (this.isSearching) {
+        this.refreshSearchResults();
+      }
+    });
   },
   recordHistoryForActive(nextValue) {
     const tab = this.activeTab();

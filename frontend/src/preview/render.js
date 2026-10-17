@@ -1,5 +1,6 @@
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
+import markedKatex from 'marked-katex-extension';
 
 import { countLines } from '../lib/editor';
 import { isAbsoluteLocalPath } from '../lib/paths';
@@ -9,6 +10,9 @@ marked.setOptions({
   gfm: true,
   breaks: true,
 });
+
+// $inline$ and $$block$$ math, rendered by KaTeX at parse time; invalid formulas show as red source text.
+marked.use(markedKatex({ throwOnError: false, output: 'htmlAndMathml' }));
 
 // Top-level h1-h3 headings with their 1-based source line, derived from each token's raw text.
 export const outlineFromMarkdown = (markdown) => {
