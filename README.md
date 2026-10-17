@@ -25,6 +25,7 @@ Ready-made packages for Windows, macOS and Linux (Flatpak, AppImage, tar.gz) are
 - Open and save Markdown files through native dialogs, with Save As and a list of recent files in the command palette
 - Warns before closing the window or quitting when tabs have unsaved changes
 - Restores the tabs of the last session on start
+- Notices when an open file changes on disk (another editor, `git pull`): clean tabs reload, tabs with unsaved changes ask first
 - Tabbed Markdown workspace with unsaved-change indicators
 - Undo/redo history in the editor, formatting toolbar, line numbers and optional word wrap (`Alt Z`)
 - Editor / Split / Preview view modes (`Ctrl E`)
@@ -81,6 +82,8 @@ Images stored on disk are shown in the preview:
 .
 ├── app.go                  # Wails backend methods exposed to the frontend (open/save, startup file, OS file opens)
 ├── localimages.go          # Serves local images to the preview (/mdit-local route)
+├── lifecycle.go            # Unsaved-changes warning on close
+├── watcher.go              # Watches open files for changes made outside mdit
 ├── instance_id*.go         # Single-instance ID (separate ID for `wails dev` builds)
 ├── *_test.go               # Go tests
 ├── main.go                 # Wails app bootstrap and app options

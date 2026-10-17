@@ -2,7 +2,10 @@ module mdit
 
 go 1.27.2
 
-require github.com/wailsapp/wails/v2 v2.16.0
+require (
+	github.com/fsnotify/fsnotify v1.10.1
+	github.com/wailsapp/wails/v2 v2.16.0
+)
 
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect

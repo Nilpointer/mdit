@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -15,6 +16,7 @@ import (
 type App struct {
 	ctx         context.Context
 	lastOpenDir string
+	watcher     *fileWatcher
 
 	// mu guards state shared between bound methods and OS callbacks:
 	// the startup hand-off with the frontend and the unsaved-changes count.
@@ -39,6 +41,28 @@ func NewApp(startupFilePath string) *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+
+	watcher, err := newFileWatcher(func(event, path string) {
+		runtime.EventsEmit(ctx, event, path)
+	}, 200*time.Millisecond)
+	if err == nil {
+		a.watcher = watcher
+	}
+}
+
+// shutdown is called when the app exits.
+func (a *App) shutdown(ctx context.Context) {
+	if a.watcher != nil {
+		a.watcher.close()
+	}
+}
+
+// SetWatchedFiles replaces the set of open files watched for changes made outside mdit.
+// Changes arrive in the frontend as "file-changed" / "file-removed" events with the path.
+func (a *App) SetWatchedFiles(paths []string) {
+	if a.watcher != nil {
+		a.watcher.setFiles(paths)
+	}
 }
 
 func (a *App) readFilePayload(path string) (*FilePayload, error) {

@@ -25,3 +25,7 @@ export function SaveFileAs(arg1, arg2) {
 export function SetUnsavedChanges(arg1) {
   return window['go']['main']['App']['SetUnsavedChanges'](arg1);
 }
+
+export function SetWatchedFiles(arg1) {
+  return window['go']['main']['App']['SetWatchedFiles'](arg1);
+}

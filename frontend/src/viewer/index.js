@@ -3,6 +3,7 @@ import { createCore } from './core';
 import { tabsPart } from './tabs';
 import { utilityPart } from './utility';
 import { viewPart } from './view';
+import { watchPart } from './watch';
 import { editingPart } from './editing';
 import { filesPart } from './files';
 import { scrollPart } from './scroll';
@@ -19,6 +20,7 @@ export const createMarkdownViewer = () => compose(
   tabsPart,
   utilityPart,
   viewPart,
+  watchPart,
   editingPart,
   filesPart,
   scrollPart,

@@ -13,3 +13,5 @@ export function SaveFile(arg1:string,arg2:string):Promise<string>;
 export function SaveFileAs(arg1:string,arg2:string):Promise<string>;
 
 export function SetUnsavedChanges(arg1:number):Promise<void>;
+
+export function SetWatchedFiles(arg1:Array<string>):Promise<void>;
