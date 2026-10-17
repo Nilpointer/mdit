@@ -13,6 +13,8 @@ It provides a split-pane workspace:
 - left pane: Markdown source editor
 - right pane: live rendered preview
 
+Ready-made packages for Windows, macOS and Linux (Flatpak, AppImage, tar.gz) are on the [Releases page](https://github.com/Nilpointer/mdit/releases); see [Installing the packages](#installing-the-packages).
+
 ## Features
 
 - Live Markdown rendering with `marked`
@@ -24,10 +26,41 @@ It provides a split-pane workspace:
 - Editor / Split / Preview view modes (`Ctrl E`)
 - Sidebar with open documents and a heading outline that jumps both panes
 - Find in preview with match highlighting (`Ctrl F`)
+- Local images next to your document (relative or absolute paths), see [Local images](#local-images)
+- Code blocks show their language and have a copy-to-clipboard button
+- Open files from the terminal (`mdit notes.md`) or via "Open with"; `.md`/`.markdown` file associations on Windows, macOS and Linux
+- Single instance: opening another file while mdit runs adds it as a tab in the existing window
 - Light and dark themes; view, sidebar, theme and wrap preferences are remembered
 - Integrated Markdown cheat sheet and about tab (read-only, with "Edit a copy")
 - External link opening through Wails browser integration
 - Responsive layout for narrower windows
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl/Cmd K` | Command palette |
+| `Ctrl/Cmd N` / `O` / `S` | New, open, save |
+| `Ctrl/Cmd W` | Close tab |
+| `Ctrl/Cmd Tab` / `Shift Tab` | Next / previous tab |
+| `Ctrl/Cmd Z` / `Y` (or `Shift Z`) | Undo / redo |
+| `Ctrl/Cmd F` | Find in preview |
+| `Ctrl/Cmd E` | Cycle Editor / Split / Preview |
+| `Ctrl/Cmd B` | Toggle sidebar |
+| `Alt Z` | Toggle word wrap |
+| `F1` | Markdown cheat sheet |
+| `Ctrl/Cmd Q` | Quit |
+
+## Local Images
+
+Images stored on disk are shown in the preview:
+
+- Relative paths (`images/pic.png`, `./pic.png`, `../shared/pic.png`) resolve against the folder of the open file. In an unsaved document they appear once the document is saved.
+- Absolute paths (`/home/me/pic.png`, `C:\pics\pic.png`) work as written.
+- Supported types: png, jpg/jpeg, gif, webp, svg, avif, apng, bmp, ico. Remote (`https://`) and `data:` images work as usual.
+- `file://` URLs are not supported; the HTML sanitizer removes them. Use a plain path instead.
+
+`testdata/local-image.md` is a test document covering these cases.
 
 ## Tech Stack
 
@@ -41,17 +74,25 @@ It provides a split-pane workspace:
 
 ```text
 .
-├── app.go                  # Wails backend methods exposed to the frontend
+├── app.go                  # Wails backend methods exposed to the frontend (open/save, startup file, OS file opens)
+├── localimages.go          # Serves local images to the preview (/mdit-local route)
+├── instance_id*.go         # Single-instance ID (separate ID for `wails dev` builds)
+├── *_test.go               # Go tests
 ├── main.go                 # Wails app bootstrap and app options
 ├── go.mod                  # Go module and Wails dependency version
-├── wails.json              # Wails frontend/build configuration
+├── mise.toml               # Pinned Go toolchain and Wails CLI
+├── wails.json              # Wails build configuration, version info, file associations
 ├── Makefile                # Convenience commands for dev/build/clean
 ├── frontend/
 │   ├── package.json        # Frontend scripts and npm dependencies
-│   ├── src/                # Frontend application source
+│   ├── src/                # Frontend application source (main.js, style.css)
 │   ├── wailsjs/            # Generated Wails JS/TS bindings
 │   └── dist/               # Generated frontend build output
-└── build/                  # Platform-specific build assets and packaged output
+├── build/                  # Platform-specific build assets and packaged output
+├── packaging/              # Linux desktop entry, AppStream metadata, icons, Flatpak manifest, AppImage launcher
+├── testdata/               # Manual test documents
+├── mockups/                # Standalone HTML design mockup of the UI
+└── .github/workflows/      # Release workflow
 ```
 
 Notes:
@@ -100,7 +141,9 @@ Equivalent direct Wails command:
 wails dev
 ```
 
-In development mode Wails starts the Go backend and the Vite frontend dev server together. The `wails.json` file controls the frontend commands:
+On Fedora and other systems with WebKitGTK 4.1, add the build tag: `mise exec -- wails dev -tags webkit2_41`.
+
+In development mode Wails starts the Go backend and the Vite frontend dev server together. Besides the desktop window, the app is also served at http://localhost:34115, so you can use it in a browser with the Go backend connected (native file dialogs still open on the desktop). The `wails.json` file controls the frontend commands:
 
 ```json
 {
@@ -229,16 +272,10 @@ Available targets:
 
 ## Validation
 
-Run backend tests:
+Run backend tests with the pinned toolchain (the tests compile the WebKit bindings, so add `-tags webkit2_41` on WebKitGTK 4.1 systems):
 
 ```bash
-go test ./...
-```
-
-Preferred pinned Go toolchain for this repository:
-
-```bash
-mise exec -- go test ./...
+mise exec -- go test -tags webkit2_41 ./...
 ```
 
 Run frontend build validation:
@@ -260,15 +297,23 @@ When file handling or preview behavior changes, manually verify:
 - Canceling open/save dialogs
 - Live preview rendering
 - Tab switching and dirty state behavior
+- Local images (open `testdata/local-image.md`)
 
 ## Troubleshooting
 
 ### `wails` command not found
 
-Install the Wails CLI and ensure your Go binary directory is on `PATH`:
+Install the pinned Wails CLI with mise and run it through mise:
 
 ```bash
-go install github.com/wailsapp/wails/v2/cmd/wails@latest
+mise install
+mise exec -- wails doctor
+```
+
+Alternatively, install it globally and make sure your Go binary directory is on `PATH`:
+
+```bash
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
 ```
 
 Then run:
@@ -337,8 +382,8 @@ GitHub Actions workflow at `.github/workflows/release.yml` builds these packages
 Trigger a release by pushing a version tag. The tag (without the leading `v`) becomes the app version on Windows and macOS:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v2.3.0
+git push origin v2.3.0
 ```
 
 Running the workflow manually (`workflow_dispatch`) builds all packages as workflow artifacts named `dev` without publishing a release.
@@ -348,7 +393,7 @@ Running the workflow manually (`workflow_dispatch`) builds all packages as workf
 Flatpak (installs for the current user; the GNOME 51 runtime is pulled from Flathub if missing):
 
 ```bash
-flatpak install --user mdit-0.1.0-x86_64.flatpak
+flatpak install --user mdit-v2.3.0-x86_64.flatpak
 flatpak run io.github.Nilpointer.mdit
 ```
 
@@ -357,8 +402,8 @@ The Flatpak has access to your home folder, because Wails uses the GTK file choo
 AppImage (WebKitGTK is not bundled; install `webkit2gtk4.1` on Fedora or `libwebkit2gtk-4.1-0` on Debian/Ubuntu):
 
 ```bash
-chmod +x mdit-0.1.0-x86_64.AppImage
-./mdit-0.1.0-x86_64.AppImage
+chmod +x mdit-v2.3.0-x86_64.AppImage
+./mdit-v2.3.0-x86_64.AppImage
 ```
 
 macOS builds are not signed or notarized. After copying `mdit.app` to Applications, remove the quarantine flag once:

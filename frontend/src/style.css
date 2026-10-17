@@ -99,6 +99,18 @@
     @apply grid size-7 shrink-0 place-items-center rounded-md text-[15px] text-muted transition hover:bg-fg/8 hover:text-fg;
   }
 
+  .action-btn {
+    @apply flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-line px-2.5 text-[13px] font-medium text-muted transition hover:border-accent/40 hover:bg-fg/6 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:bg-transparent disabled:hover:text-muted;
+  }
+
+  .action-btn > i {
+    @apply text-[16px];
+  }
+
+  .action-btn-primary {
+    @apply border-transparent bg-accent font-semibold text-accent-ink shadow-[0_6px_20px_-8px_var(--accent)] hover:border-transparent hover:bg-accent hover:text-accent-ink hover:brightness-110;
+  }
+
   .kbd {
     @apply rounded-md border border-line bg-elevated px-1.5 py-px font-mono text-[10.5px] text-muted;
   }
@@ -264,6 +276,66 @@
     border: 0;
     padding: 0;
     font-size: inherit;
+  }
+
+  /* Code block chrome added by decorateCodeBlocks: language label left, copy button right. */
+  .markdown-preview .code-block {
+    margin: 1.25rem 0;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--code-bg);
+    overflow: hidden;
+  }
+
+  .markdown-preview .code-block pre {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    padding-top: 0.15rem;
+  }
+
+  .markdown-preview .code-block-header {
+    display: flex;
+    align-items: center;
+    height: 2rem;
+    padding: 0 0.4rem 0 1.15rem;
+    user-select: none;
+  }
+
+  .markdown-preview .code-block-header::before {
+    content: attr(data-lang);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: color-mix(in oklab, var(--muted) 80%, transparent);
+  }
+
+  .markdown-preview .code-copy {
+    display: grid;
+    place-items: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    margin-left: auto;
+    border-radius: 6px;
+    font-size: 14px;
+    color: var(--muted);
+    opacity: 0.75;
+    transition: opacity 150ms, color 150ms, background-color 150ms;
+  }
+
+  .markdown-preview .code-block:hover .code-copy,
+  .markdown-preview .code-copy:focus-visible {
+    opacity: 1;
+  }
+
+  .markdown-preview .code-copy:hover {
+    color: var(--fg);
+    background: color-mix(in oklab, var(--fg) 8%, transparent);
+  }
+
+  .markdown-preview .code-copy.copied {
+    color: #34d399;
+    opacity: 1;
   }
 
   .markdown-preview blockquote {

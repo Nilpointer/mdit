@@ -108,6 +108,92 @@ const outlineFromMarkdown = (markdown) => {
   return items;
 };
 
+const localImageRoute = '/mdit-local';
+
+const isAbsoluteLocalPath = (path) => path.startsWith('/') || path.startsWith('\\\\') || /^[a-z]:[\\/]/i.test(path);
+
+// Absolute disk path for a local <img> src, null for remote/data URLs (left untouched),
+// or '' for a relative path that cannot be resolved because the document has no folder yet.
+// file:// URLs never get here: DOMPurify strips that scheme during sanitizing.
+const localImagePath = (src, baseDir) => {
+  if (src.startsWith('//') || (/^[a-z][a-z0-9+.-]*:/i.test(src) && !/^[a-z]:[\\/]/i.test(src))) {
+    return null;
+  }
+
+  let path = src;
+  try {
+    path = decodeURI(src);
+  } catch {
+    // Keep the path as written when it is not valid percent-encoding.
+  }
+
+  if (isAbsoluteLocalPath(path)) {
+    return path;
+  }
+  // The backend cleans the joined path, so "./" and "../" segments resolve there.
+  return baseDir ? `${baseDir.replace(/[\\/]+$/, '')}/${path}` : '';
+};
+
+// Points local images at the backend route that serves them from disk (localimages.go).
+const resolveLocalImages = (root, baseDir) => {
+  for (const img of root.querySelectorAll('img[src]')) {
+    const path = localImagePath(img.getAttribute('src'), baseDir);
+    if (path === null) {
+      continue;
+    }
+    if (path === '') {
+      img.title = 'Save the document to show images with relative paths';
+      continue;
+    }
+    img.setAttribute('src', `${localImageRoute}?path=${encodeURIComponent(path)}`);
+  }
+};
+
+// Adds preview-only chrome to HTML that DOMPurify already sanitized: code block headers and
+// local image sources. Only DOM APIs are used on the inert template, so no untrusted markup is introduced.
+const decoratePreview = (sanitizedHtml, baseDir) => {
+  const template = document.createElement('template');
+  template.innerHTML = sanitizedHtml;
+  decorateCodeBlocks(template.content);
+  resolveLocalImages(template.content, baseDir);
+  return template.innerHTML;
+};
+
+// Wraps each code block in a header holding its language label and a copy button.
+// The label is drawn by CSS from data-lang, which keeps it out of the text that
+// find-in-preview searches and that copying returns.
+const decorateCodeBlocks = (root) => {
+  for (const pre of root.querySelectorAll('pre')) {
+    const code = pre.querySelector(':scope > code');
+    if (!code) {
+      continue;
+    }
+
+    const languageClass = [...code.classList].find((name) => name.startsWith('language-'));
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    if (languageClass) {
+      header.dataset.lang = languageClass.slice('language-'.length);
+    }
+
+    const copyButton = document.createElement('button');
+    copyButton.type = 'button';
+    copyButton.className = 'code-copy';
+    copyButton.title = 'Copy code';
+    copyButton.setAttribute('aria-label', 'Copy code');
+    copyButton.dataset.copyCode = '';
+    const icon = document.createElement('i');
+    icon.className = 'ri-file-copy-line';
+    copyButton.append(icon);
+    header.append(copyButton);
+
+    const block = document.createElement('div');
+    block.className = 'code-block';
+    pre.replaceWith(block);
+    block.append(header, pre);
+  }
+};
+
 // Pixel offset of a character inside a textarea, measured with a hidden mirror so wrapped lines count.
 const measureOffsetTop = (textarea, offset) => {
   const style = window.getComputedStyle(textarea);
@@ -138,6 +224,7 @@ window.markdownViewer = () => {
   return {
     markdown: '',
     renderedHtml: '',
+    exportHtml: '',
     outline: [],
     statusMessage: 'Ready',
     view: viewModes.some((mode) => mode.id === prefs.view) ? prefs.view : 'split',
@@ -309,6 +396,7 @@ window.markdownViewer = () => {
         this.activeTabId = null;
         this.markdown = '';
         this.renderedHtml = '';
+        this.exportHtml = '';
         this.outline = [];
         if (createFallback) {
           this.createTab({ markdown: '', title: 'untitled.md', kind: 'file' });
@@ -496,7 +584,9 @@ window.markdownViewer = () => {
       this.renderTimer = window.setTimeout(() => this.renderNow(), 80);
     },
     renderNow() {
-      this.renderedHtml = DOMPurify.sanitize(marked.parse(this.markdown));
+      // exportHtml is the plain sanitized output used for "Copy rendered HTML"; the preview adds code block chrome.
+      this.exportHtml = DOMPurify.sanitize(marked.parse(this.markdown));
+      this.renderedHtml = decoratePreview(this.exportHtml, this.activeDirectory());
       this.outline = outlineFromMarkdown(this.markdown);
       if (this.isSearching) {
         this.$nextTick(() => this.refreshSearchResults());
@@ -677,18 +767,49 @@ window.markdownViewer = () => {
         tab.title = this.makeTabTitle(savedPath);
         tab.savedMarkdown = content;
         this.updateDirty(tab);
+        // A first save gives the document a folder, so relative image paths can resolve now.
+        this.renderNow();
         this.notify(`Saved ${filenameFromPath(savedPath)}`);
       } catch (error) {
         this.notify('Failed to save file');
       }
     },
+    async copyText(text) {
+      if (window.runtime) {
+        return ClipboardSetText(text).catch(() => false);
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        return false;
+      }
+    },
     async copyRenderedHtml() {
-      if (!window.runtime) {
-        this.notify('Copy is only available inside Wails');
+      const copied = await this.copyText(this.exportHtml);
+      this.notify(copied ? 'Copied rendered HTML' : 'Could not copy HTML');
+    },
+    async copyCodeBlock(button) {
+      const code = button.closest('.code-block')?.querySelector('pre > code');
+      if (!code) {
         return;
       }
-      const copied = await ClipboardSetText(this.renderedHtml).catch(() => false);
-      this.notify(copied ? 'Copied rendered HTML' : 'Could not copy HTML');
+
+      const copied = await this.copyText(code.textContent.replace(/\n$/, ''));
+      if (!copied) {
+        this.notify('Could not copy code');
+        return;
+      }
+
+      // Brief check-mark confirmation on the button itself; a re-render simply replaces it.
+      const icon = button.firstElementChild;
+      button.classList.add('copied');
+      icon.className = 'ri-check-line';
+      window.setTimeout(() => {
+        button.classList.remove('copied');
+        icon.className = 'ri-file-copy-line';
+      }, 1500);
+      this.statusMessage = 'Code copied';
     },
     quitApp() {
       Quit();
@@ -783,6 +904,12 @@ window.markdownViewer = () => {
     // Preview links
 
     handlePreviewClick(event) {
+      const copyButton = event.target.closest('[data-copy-code]');
+      if (copyButton) {
+        this.copyCodeBlock(copyButton);
+        return;
+      }
+
       const link = event.target.closest('a');
       if (!link) {
         return;
@@ -1196,20 +1323,27 @@ document.querySelector('#app').innerHTML = `
           <span x-show="isUtility" class="chip bg-violet-400/12 text-violet-400">Read-only</span>
 
           <div class="ml-auto flex items-center gap-1.5">
-            <button type="button" class="icon-btn" title="Undo (Ctrl Z)" :disabled="isUtility" @click="undo()"><i class="ri-arrow-go-back-line"></i></button>
-            <button type="button" class="icon-btn" title="Redo (Ctrl Y)" :disabled="isUtility" @click="redo()"><i class="ri-arrow-go-forward-line"></i></button>
-            <button type="button" class="icon-btn" title="Find in preview (Ctrl F)" @click="openSearch()"><i class="ri-search-line"></i></button>
-            <button type="button" class="icon-btn" title="Open file (Ctrl O)" @click="openFile()"><i class="ri-folder-open-line"></i></button>
+            <button type="button" class="action-btn" title="Undo (Ctrl Z)" :disabled="isUtility" @click="undo()">
+              <i class="ri-arrow-go-back-line"></i><span class="hidden lg:inline">Undo</span>
+            </button>
+            <button type="button" class="action-btn" title="Redo (Ctrl Y)" :disabled="isUtility" @click="redo()">
+              <i class="ri-arrow-go-forward-line"></i><span class="hidden lg:inline">Redo</span>
+            </button>
+            <button type="button" class="action-btn" title="Find in preview (Ctrl F)" @click="openSearch()">
+              <i class="ri-search-line"></i><span class="hidden lg:inline">Find</span>
+            </button>
+            <button type="button" class="action-btn" title="Open file (Ctrl O)" @click="openFile()">
+              <i class="ri-folder-open-line"></i><span class="hidden lg:inline">Open</span>
+            </button>
             <button
               type="button"
-              class="flex h-8 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-40"
-              :class="activeTab()?.isDirty ? 'bg-accent text-accent-ink shadow-[0_6px_20px_-8px_var(--accent)] hover:brightness-110' : 'border border-line text-muted hover:text-fg'"
+              class="action-btn"
+              :class="activeTab()?.isDirty && 'action-btn-primary'"
               title="Save (Ctrl S)"
               :disabled="isUtility"
               @click="saveFile()"
             >
-              <i class="ri-save-3-line"></i>
-              <span class="hidden sm:inline">Save</span>
+              <i class="ri-save-3-line"></i><span class="hidden lg:inline">Save</span>
             </button>
           </div>
         </div>

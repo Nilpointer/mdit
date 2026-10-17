@@ -19,7 +19,7 @@ mdit is a desktop Markdown editor/viewer: Go 1.27 + Wails v2 backend, Vanilla JS
 - Single test: `mise exec -- go test -tags webkit2_41 ./... -run '^TestName$'`
 - Format Go: `mise exec -- gofmt -w <files>`
 
-Tests live in `app_test.go`; there is no lint config. To verify frontend changes, run the Vite build. When file handling changes, check open/save/cancel and the preview by hand.
+Tests live in `app_test.go` and `localimages_test.go`; there is no lint config. `testdata/local-image.md` is a manual check for local images. To verify frontend changes, run the Vite build. When file handling changes, check open/save/cancel and the preview by hand.
 
 ## Architecture
 
@@ -39,6 +39,8 @@ Tests live in `app_test.go`; there is no lint config. To verify frontend changes
 - A file tab is dirty when `markdown !== savedMarkdown` (see `updateDirty`), so undoing back to the saved text makes it clean again.
 - The outline comes from `marked.lexer` top-level h1–h3 tokens; each item's source line is computed from token `raw` text, and its index matches `:scope > h1, h2, h3` in the preview. Outline jumps pause scroll sync (`syncOrigin = 'outline'`) while both panes scroll.
 - Find highlights preview text with the CSS Custom Highlight API (`::highlight(search)`), never by rewriting the sanitized HTML.
+- Preview pipeline in `renderNow`: `marked.parse` → `DOMPurify.sanitize` (= `exportHtml`, used by "Copy rendered HTML") → `decoratePreview`, which adds preview-only chrome on an inert `<template>` with DOM APIs only: code block headers (language label via CSS `attr(data-lang)`, copy button handled in `handlePreviewClick`) and local image sources.
+- Local images: `resolveLocalImages` rewrites non-remote `<img src>` to `/mdit-local?path=<absolute path>`, resolving relative paths against the open file's folder (unsaved documents can't resolve relative images). `localimages.go` serves that route as asset-server middleware, only for absolute paths to regular files with an image extension (tests in `localimages_test.go`). `file://` URLs are stripped by DOMPurify and stay unsupported.
 - View mode, sidebar, theme and word wrap persist in `localStorage` (`mdit.ui`); reads and writes are wrapped in try/catch.
 - Styles: Tailwind v4, CSS-first. There is no `tailwind.config.js`. Colors are CSS variables on `:root` / `:root[data-theme='light']`, mapped to utilities (`bg-surface`, `text-muted`, `border-line`, `text-accent`, …) by `@theme inline` in `src/style.css`; use those tokens, not raw slate/cyan classes, so both themes work. Utilities live inline in the template. Component classes live in `src/style.css` under `@layer components`. Fonts (Inter, JetBrains Mono) are bundled via `@fontsource` packages so the app works offline.
 - `mockups/modern-ui.html` is the standalone design mockup this UI was built from (CDN-loaded, not part of the build).
