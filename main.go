@@ -40,6 +40,11 @@ func main() {
 			UniqueId:               instanceID,
 			OnSecondInstanceLaunch: app.onSecondInstanceLaunch,
 		},
+		DragAndDrop: &options.DragAndDrop{
+			EnableFileDrop: true,
+			// Keep the webview from inserting dropped file URLs into the editor as text.
+			DisableWebViewDrop: true,
+		},
 		Linux: &linux.Options{
 			Icon:        appIcon,
 			ProgramName: "mdit",

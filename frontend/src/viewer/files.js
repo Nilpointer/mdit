@@ -1,6 +1,6 @@
 // Files: part of the markdownViewer Alpine component (merged in viewer/index.js).
 
-import { ClipboardSetText, Quit } from '../../wailsjs/runtime/runtime';
+import { ClipboardSetText, OnFileDrop, Quit } from '../../wailsjs/runtime/runtime';
 import { filenameFromPath } from '../lib/paths';
 import { backendApp } from './constants';
 
@@ -60,6 +60,32 @@ export const filesPart = {
       this.notify(`Saved ${filenameFromPath(savedPath)}`);
     } catch (error) {
       this.notify('Failed to save file');
+    }
+  },
+  listenForFileDrops() {
+    if (!window.runtime) {
+      return;
+    }
+    OnFileDrop((x, y, paths) => this.openDroppedFiles(paths), false);
+  },
+  // Opens dropped Markdown files as tabs (same extensions as isMarkdownPath in Go) and reports the rest.
+  async openDroppedFiles(paths) {
+    const markdownPaths = paths.filter((path) => /\.(md|markdown)$/i.test(path));
+    const skipped = paths.length - markdownPaths.length;
+
+    for (const path of markdownPaths) {
+      const payload = await this.readFileByPath(path);
+      if (payload) {
+        this.openFilePayload(payload, { closeCleanDefaultTab: true, quiet: markdownPaths.length > 1 });
+      } else {
+        this.notify(`Could not open ${filenameFromPath(path)}`);
+      }
+    }
+
+    if (skipped > 0) {
+      this.notify(`Skipped ${skipped} file${skipped === 1 ? '' : 's'}: only .md and .markdown files can be opened`);
+    } else if (markdownPaths.length > 1) {
+      this.notify(`Opened ${markdownPaths.length} files`);
     }
   },
   async copyText(text) {

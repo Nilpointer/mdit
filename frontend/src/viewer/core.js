@@ -55,6 +55,7 @@ export const createCore = () => {
       this.setActiveTab(defaultTab.id);
       this.listenForOsFileOpens();
       this.listenForFileChanges();
+      this.listenForFileDrops();
       this.startSession();
     },
     async startSession() {
