@@ -4,7 +4,7 @@ mdit is a desktop Markdown viewer/editor built with Go and Wails.
 
 This application is written by an AI coding agent.
 
-This software is free and open source. You use it at your own risk, without warranty of any kind.
+This software is free and open source, released under the MIT License. You use it at your own risk, without warranty of any kind.
 
 [Close About](#close-about)
 

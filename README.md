@@ -423,3 +423,7 @@ On Windows, the installer registers mdit for `.md` and `.markdown` files ("Open 
 You can also open a file directly from a terminal: `mdit notes.md` (`.md` and `.markdown` are accepted).
 
 Linux packaging files (desktop entry, AppStream metadata, icons, Flatpak manifest, AppImage launcher) live in `packaging/`.
+
+## License
+
+mdit is released under the [MIT License](LICENSE).
