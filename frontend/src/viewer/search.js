@@ -35,7 +35,10 @@ export const searchPart = {
     }
 
     const ranges = [];
-    const walker = document.createTreeWalker(preview, NodeFilter.SHOW_TEXT);
+    // Skip text the user cannot see: style rules inside Mermaid SVGs and KaTeX's hidden MathML/TeX copy.
+    const walker = document.createTreeWalker(preview, NodeFilter.SHOW_TEXT, {
+      acceptNode: (node) => (node.parentElement?.closest('style, .katex-mathml') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    });
     while (walker.nextNode()) {
       const node = walker.currentNode;
       const text = node.textContent.toLowerCase();

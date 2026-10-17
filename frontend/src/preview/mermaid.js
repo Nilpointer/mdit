@@ -2,31 +2,53 @@
 // actually contains a ```mermaid block.
 import DOMPurify from 'dompurify';
 
+import { createLruCache } from '../lib/cache';
+
 let mermaidModule = null;
 let renderCounter = 0;
-const svgCache = new Map();
+let lastPass = Promise.resolve();
+// theme + source -> { svg, id } or { error }; parse errors are cached too, so an invalid diagram
+// is not parsed again on every keystroke elsewhere in the document.
+const svgCache = createLruCache(64);
 
 const loadMermaid = () => {
-  mermaidModule ??= import('mermaid').then((module) => module.default);
+  mermaidModule ??= import('mermaid')
+    .then((module) => module.default)
+    .catch((error) => {
+      // Allow a later render to retry instead of keeping the failed import forever.
+      mermaidModule = null;
+      throw error;
+    });
   return mermaidModule;
 };
+
+// The trailing "x" keeps one id from being a prefix of another (render 3 vs. render 30).
+const nextId = () => `mdit-mermaid-${(renderCounter += 1)}x`;
 
 const sanitizeSvg = (svg) => DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } });
 
 // Renders one diagram (cached per theme and source). Throws on invalid diagram syntax.
 const renderSvg = async (mermaid, source, theme) => {
   const key = `${theme}\n${source}`;
-  if (!svgCache.has(key)) {
-    const id = `mdit-mermaid-${(renderCounter += 1)}`;
+  let entry = svgCache.get(key);
+  if (!entry) {
+    const id = nextId();
     try {
       const { svg } = await mermaid.render(id, source);
-      svgCache.set(key, sanitizeSvg(svg));
+      entry = { svg: sanitizeSvg(svg), id };
+    } catch (error) {
+      entry = { error };
     } finally {
       // Mermaid leaves its scratch element behind when rendering fails.
       document.getElementById(`d${id}`)?.remove();
     }
+    svgCache.set(key, entry);
   }
-  return svgCache.get(key);
+  if (entry.error) {
+    throw entry.error;
+  }
+  // Mermaid scopes its styles and arrow markers to the render id, so every inserted copy gets its own.
+  return entry.svg.replaceAll(entry.id, nextId());
 };
 
 // Shows the parse error above a block that failed, reusing the message from an earlier pass.
@@ -40,11 +62,7 @@ const showError = (block, error) => {
   }
 };
 
-// Replaces ```mermaid code blocks inside root (the live preview) with their diagrams.
-// Blocks that fail to parse stay as code with the error message above them.
-// Safe to run again on the same DOM: when Alpine keeps the preview (same HTML, e.g. a theme switch),
-// existing diagrams are redrawn from their stored source instead of being skipped.
-export const renderMermaidDiagrams = async (root, theme) => {
+const renderPass = async (root, theme) => {
   const blocks = [
     ...root.querySelectorAll('pre > code.language-mermaid'),
     ...root.querySelectorAll(`.mermaid-diagram:not([data-theme="${theme}"])`),
@@ -89,4 +107,16 @@ export const renderMermaidDiagrams = async (root, theme) => {
       }
     }
   }
+};
+
+// Replaces ```mermaid code blocks inside root (the live preview) with their diagrams.
+// Blocks that fail to parse stay as code with the error message above them.
+// Safe to run again on the same DOM: when Alpine keeps the preview (same HTML, e.g. a theme switch),
+// existing diagrams are redrawn from their stored source instead of being skipped.
+// Passes run one after another, because mermaid.initialize sets the theme globally and an
+// overlapping pass would render (and cache) diagrams with the other theme.
+export const renderMermaidDiagrams = (root, theme) => {
+  const pass = lastPass.then(() => renderPass(root, theme));
+  lastPass = pass.catch(() => {});
+  return pass;
 };

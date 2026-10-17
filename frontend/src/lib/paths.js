@@ -13,4 +13,7 @@ export const directoryFromPath = (path) => {
   return index > 0 ? path.slice(0, index) : '';
 };
 
-export const isAbsoluteLocalPath = (path) => path.startsWith('/') || path.startsWith('\\\\') || /^[a-z]:[\\/]/i.test(path);
+// Same extensions as isMarkdownPath in Go (CLI arguments and OS file opens).
+export const isMarkdownPath = (path) => /\.(md|markdown)$/i.test(path);
+
+export const isAbsoluteLocalPath =(path) => path.startsWith('/') || path.startsWith('\\\\') || /^[a-z]:[\\/]/i.test(path);

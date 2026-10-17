@@ -20,22 +20,34 @@ import typescript from 'highlight.js/lib/languages/typescript';
 import xml from 'highlight.js/lib/languages/xml';
 import yaml from 'highlight.js/lib/languages/yaml';
 
+import { createLruCache } from '../lib/cache';
+
 const languages = { bash, c, cpp, css, diff, dockerfile, go, java, javascript, json, markdown, python, rust, sql, typescript, xml, yaml };
 for (const [name, definition] of Object.entries(languages)) {
   hljs.registerLanguage(name, definition);
 }
+
+const highlightCache = createLruCache(200);
+
 // Common fence names that the language definitions do not alias themselves.
 hljs.registerAliases(['shell', 'console'], { languageName: 'bash' });
 
 // Highlights a <code> element in place when its language is known (aliases such as js, ts, sh,
 // yml or html work too). highlight.js escapes the code text; its span markup is sanitized
 // once more before insertion so no unsanitized HTML reaches the preview.
+// Results are cached by language and text, because the preview re-renders on every keystroke
+// and most code blocks are unchanged between renders.
 export const highlightCode = (code, language) => {
   if (!language || !hljs.getLanguage(language)) {
     return;
   }
 
-  const result = hljs.highlight(code.textContent, { language, ignoreIllegals: true });
-  code.innerHTML = DOMPurify.sanitize(result.value);
+  const key = `${language}\n${code.textContent}`;
+  let html = highlightCache.get(key);
+  if (html === undefined) {
+    html = DOMPurify.sanitize(hljs.highlight(code.textContent, { language, ignoreIllegals: true }).value);
+    highlightCache.set(key, html);
+  }
+  code.innerHTML = html;
   code.classList.add('hljs');
 };

@@ -1,7 +1,7 @@
 // Files: part of the markdownViewer Alpine component (merged in viewer/index.js).
 
 import { ClipboardSetText, OnFileDrop, Quit } from '../../wailsjs/runtime/runtime';
-import { filenameFromPath } from '../lib/paths';
+import { filenameFromPath, isMarkdownPath } from '../lib/paths';
 import { backendApp } from './constants';
 
 export const filesPart = {
@@ -68,24 +68,44 @@ export const filesPart = {
     }
     OnFileDrop((x, y, paths) => this.openDroppedFiles(paths), false);
   },
-  // Opens dropped Markdown files as tabs (same extensions as isMarkdownPath in Go) and reports the rest.
+  // Opens dropped Markdown files as tabs and reports the outcome in one message, since each
+  // notify replaces the previous toast.
   async openDroppedFiles(paths) {
-    const markdownPaths = paths.filter((path) => /\.(md|markdown)$/i.test(path));
+    const markdownPaths = paths.filter(isMarkdownPath);
     const skipped = paths.length - markdownPaths.length;
+    // Read in parallel; tabs still open in drop order.
+    const payloads = await Promise.all(markdownPaths.map((path) => this.readFileByPath(path)));
 
-    for (const path of markdownPaths) {
-      const payload = await this.readFileByPath(path);
-      if (payload) {
-        this.openFilePayload(payload, { closeCleanDefaultTab: true, quiet: markdownPaths.length > 1 });
-      } else {
-        this.notify(`Could not open ${filenameFromPath(path)}`);
+    const failed = [];
+    let opened = 0;
+    for (const [index, payload] of payloads.entries()) {
+      if (!payload) {
+        failed.push(filenameFromPath(markdownPaths[index]));
+        continue;
+      }
+      // An already open file is only focused, so it does not count as opened.
+      const path = payload.path ?? payload.Path ?? '';
+      const alreadyOpen = this.tabs.some((tab) => tab.kind === 'file' && tab.filePath === path);
+      this.openFilePayload(payload, { closeCleanDefaultTab: true, quiet: markdownPaths.length > 1 });
+      if (!alreadyOpen) {
+        opened += 1;
       }
     }
 
+    const parts = [];
+    if (opened > 0 && (markdownPaths.length > 1 || failed.length > 0 || skipped > 0)) {
+      parts.push(`Opened ${opened} file${opened === 1 ? '' : 's'}`);
+    }
+    if (failed.length > 0) {
+      parts.push(`could not open ${failed.join(', ')}`);
+    }
     if (skipped > 0) {
-      this.notify(`Skipped ${skipped} file${skipped === 1 ? '' : 's'}: only .md and .markdown files can be opened`);
-    } else if (markdownPaths.length > 1) {
-      this.notify(`Opened ${markdownPaths.length} files`);
+      parts.push(`skipped ${skipped} non-Markdown file${skipped === 1 ? '' : 's'}`);
+    }
+    // A single dropped file already got its own "Opened"/"Focused" message from openFilePayload.
+    if (parts.length > 0) {
+      const message = parts.join('; ');
+      this.notify(message.charAt(0).toUpperCase() + message.slice(1));
     }
   },
   async copyText(text) {

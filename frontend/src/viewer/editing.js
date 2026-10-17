@@ -17,14 +17,21 @@ export const editingPart = {
     this.exportHtml = renderMarkdown(this.markdown);
     this.renderedHtml = decoratePreview(this.exportHtml, this.activeDirectory());
     this.outline = outlineFromMarkdown(this.markdown);
-    this.$nextTick(async () => {
+    this.$nextTick(() => this.refreshDiagrams());
+  },
+  // Draws Mermaid diagrams into the current preview DOM, then refreshes find (diagram text is searchable).
+  async refreshDiagrams() {
+    try {
       if (this.$refs.preview) {
         await renderMermaidDiagrams(this.$refs.preview, this.theme);
       }
+    } catch (error) {
+      this.statusMessage = 'Could not load the diagram renderer';
+    } finally {
       if (this.isSearching) {
         this.refreshSearchResults();
       }
-    });
+    }
   },
   recordHistoryForActive(nextValue) {
     const tab = this.activeTab();
