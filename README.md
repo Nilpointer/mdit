@@ -8,6 +8,8 @@
 
 mdit is a desktop Markdown viewer/editor built with **Go + Wails v2**.
 
+![mdit with the Markdown source on the left and the live preview on the right](assets/screenshot.png)
+
 It provides a split-pane workspace:
 
 - left pane: Markdown source editor
