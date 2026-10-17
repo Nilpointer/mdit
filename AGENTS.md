@@ -105,7 +105,7 @@ Repository guidance for agentic coding in `mdit`.
 
 ## CSS / UI Style
 
-- Tailwind utility classes are the main styling mechanism in `frontend/src/main.js`.
+- Tailwind utility classes are the main styling mechanism in `frontend/src/template.js` (the app markup).
 - Custom component styles live in `frontend/src/style.css` under `@layer components`.
 - Reuse the current dark slate/cyan palette unless a task clearly asks for a new direction.
 - Prefer utility composition over ad hoc CSS where possible.

@@ -87,7 +87,7 @@ Images stored on disk are shown in the preview:
 ├── Makefile                # Convenience commands for dev/build/clean
 ├── frontend/
 │   ├── package.json        # Frontend scripts and npm dependencies
-│   ├── src/                # Frontend application source (main.js, style.css)
+│   ├── src/                # Frontend source: main.js (bootstrap), template.js, viewer/ (Alpine component parts), preview/, lib/, style.css
 │   ├── wailsjs/            # Generated Wails JS/TS bindings
 │   └── dist/               # Generated frontend build output
 ├── build/                  # Platform-specific build assets and packaged output
